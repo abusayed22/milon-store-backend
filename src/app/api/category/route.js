@@ -12,7 +12,7 @@ export async function GET (req,res) {
       return NextResponse.json({ status: "ok", data: category });
     } catch (error) {
       console.log("Sub-category fetch error :" + error.message);
-      return NextResponse.json({ status: 501, error: "Failed to get all categories!" });
+      return NextResponse.json({ status: 501, error: "Faileds to get all categories!" });
     } 
 }
 
