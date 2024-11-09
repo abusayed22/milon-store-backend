@@ -1,0 +1,128 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum categoryType {
+  FEED
+  MEDICINE
+  GROCERY
+}
+
+model subCategory {
+  id         Int          @id @default(autoincrement())
+  category   categoryType
+  name       String
+  created_at DateTime     @default(now()) @db.Timestamp(0)
+  updated_at DateTime     @default(now()) @updatedAt @db.Timestamp(0)
+}
+
+model products {
+  id           Int                   @id @unique @default(autoincrement())
+  name         String
+  category     categoryType
+  subCategory  String ?
+  perPacket    Float ?
+  totalpacket  Float ?
+  quantity     Int
+  totalPrice   Int
+  note         String                @db.LongText()
+  transferList productTransferList[]
+  // sales sales []
+  created_at   DateTime              @default(now()) @db.Timestamp(0)
+  updated_at   DateTime              @default(now()) @updatedAt @db.Timestamp(0)
+}
+
+model productTransferList {
+  id Int @id @unique @default(autoincrement())
+  category categoryType ?
+  subCategory  String ?
+  perPacket    Float ?
+  totalpacket  Float ?
+  quantity     Int
+  product_id  Int
+  products    products @relation(fields: [product_id], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  productName String
+  note        String   @db.LongText()
+
+  created_at DateTime @default(now()) @db.Timestamp(0)
+  updated_at DateTime @default(now()) @updatedAt @db.Timestamp(0)
+}
+
+model customers {
+  id      Int    @id @unique @default(autoincrement())
+  name    String
+  phone   String @unique 
+  address String
+  note    String @db.LongText()
+  sales sales []
+  dueList dueList[]
+  collectPyament collectPayment []
+  created_at DateTime @default(now()) @db.Timestamp(0)
+  updated_at DateTime @default(now()) @updatedAt @db.Timestamp(0)
+}
+
+model sales {
+  id          Int      @id @unique @default(autoincrement())
+  productName String
+  category     categoryType?
+  subCategory  String?
+  quantity    Float
+  perPacket    Float?
+  totalpacket  Float?
+  salesPrice  Float
+  // product_id Int
+  // products products @relation(fields: [product_id],references: [id],onDelete: Restrict,onUpdate: Cascade)
+  customer_id Int
+  customers customers @relation(fields: [customer_id],references: [id],onUpdate: Cascade,onDelete: Restrict)
+  paymentStatus paymentStatus
+  note    String @db.LongText()
+  created_at  DateTime @default(now()) @db.Timestamp(0)
+  updated_at  DateTime @default(now()) @updatedAt @db.Timestamp(0) 
+}
+
+enum paymentStatus {
+  due
+  paid
+}
+
+
+model expneses {
+  id          Int      @id @unique @default(autoincrement())
+  amount  Float
+  note    String @db.LongText()
+  created_at  DateTime @default(now()) @db.Timestamp(0)
+  updated_at  DateTime @default(now()) @updatedAt @db.Timestamp(0)
+}
+
+model collectPayment {
+  id          Int      @id @unique @default(autoincrement())
+  customer_id Int
+  customerName customers @relation(fields: [customer_id],references: [id],onDelete: Restrict,onUpdate: Cascade)
+  amount Float
+  note    String @db.LongText()
+  created_at  DateTime @default(now()) @db.Timestamp(0)
+  updated_at  DateTime @default(now()) @updatedAt @db.Timestamp(0)
+}
+
+model dueList {
+  id          Int      @id @unique @default(autoincrement())
+  productCategory categoryType
+  subCategory String ?
+  customer_id Int
+  customer customers @relation(fields: [customer_id],references: [id],onDelete: Restrict,onUpdate: Cascade)
+  amount Float
+  note    String @db.LongText()
+  created_at  DateTime @default(now()) @db.Timestamp(0)
+  updated_at  DateTime @default(now()) @updatedAt @db.Timestamp(0)
+}
