@@ -1,0 +1,6 @@
+{
+  "/api/category/route": "app/api/category/route.js",
+  "/favicon.ico/route": "app/favicon.ico/route.js",
+  "/api/dashboard/route": "app/api/dashboard/route.js",
+  "/api/customers/route": "app/api/customers/route.js"
+}
