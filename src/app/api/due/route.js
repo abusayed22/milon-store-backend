@@ -8,9 +8,7 @@ const prisma = new PrismaClient()
 export async function GET(req) {
     
     const { searchParams } = new URL(req.url);
-    console.log(searchParams)
     const userId = searchParams.get("customerId");
-    console.log("userId "+userId)
   
     if (!userId) {
       console.log("user_id is required",)
@@ -26,11 +24,11 @@ export async function GET(req) {
         where: {
           customer_id: parseInt(userId),
         },
-        include: {
-          customer: true, // Include related customer data if needed
-        },
+        // include: {
+        //   customer: true, // Include related customer data if needed
+        // },
       });
-      console.log("due list :" + dueList)
+      console.log( dueList)
   
       // Return the filtered due list data
       return NextResponse.json({

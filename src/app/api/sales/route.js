@@ -7,17 +7,17 @@ const prisma = new PrismaClient();
 export async function GET(req, res) {
   try {
     const sales = await prisma.sales.findMany({
-      include:{
+      include: {
         customers: {
-          select:{
-            name:true
-          }
-        }
-      }
+          select: {
+            name: true,
+          },
+        },
+      },
     });
-    
+
     let totalSalesPrice = 0;
-    const formattedSales = sales.map(sale => {
+    const formattedSales = sales.map((sale) => {
       totalSalesPrice += sale.salesPrice; // Add each sale's price to total
 
       return {
@@ -38,7 +38,11 @@ export async function GET(req, res) {
       };
     });
 
-    return NextResponse.json({ status: "ok", data: formattedSales, totalSalesPrice });
+    return NextResponse.json({
+      status: "ok",
+      data: formattedSales,
+      totalSalesPrice,
+    });
   } catch (error) {
     console.log(error.message);
     return NextResponse.json({
@@ -95,10 +99,10 @@ export async function OPTIONS(req, res) {
   }
 }
 
-// create sales in sales list by product and customer , 
+// create sales in sales list by product and customer ,
 export async function POST(req, res) {
   try {
-    const reqBody = await req.json()
+    const reqBody = await req.json();
     const {
       selectedProduct,
       category,
@@ -111,34 +115,33 @@ export async function POST(req, res) {
       paymentStatus,
       note,
     } = reqBody;
-    
-    const selected = JSON.parse(selectedProduct)
+
+    // const selected = JSON.parse(selectedProduct)
+    // console.log(selected)
 
     // if sub category not have
     const whereCondition = {
-      id:Number(selected?.id),
-      name: selected?.name
+      id: Number(selectedProduct?.id),
+      name: selectedProduct?.name,
     };
-
 
     // Step 1: Fetch product details from the `products` table based on `productName`
     const product = await prisma.products.findFirst({
-      where: {id:Number(selected?.id)},
+      where: { id: Number(selectedProduct?.id) },
     });
-    
 
     if (!product) {
-      console.error("Product not found")
+      console.error("Product not found");
       return NextResponse.json({ status: 404, error: "Product not found" });
     }
 
-     // Step 2: Calculate quantity based on category length
-     const categoryCount = await prisma.products.count({
+    // Step 2: Calculate quantity based on category length
+    const categoryCount = await prisma.products.count({
       where: whereCondition,
     });
 
     if (product.quantity < categoryCount) {
-      console.error("Insufficient product quantity" )
+      console.error("Insufficient product quantity");
       return NextResponse.json(
         { error: "Insufficient product quantity" },
         { status: 400 }
@@ -149,7 +152,7 @@ export async function POST(req, res) {
     const sale = await prisma.$transaction(async (prisma) => {
       // Create the sale
       const saleData = {
-        productName: selected?.name,
+        productName: selectedProduct?.name,
         category: category,
         subCategory: subCategory,
         quantity: quantity ? parseFloat(quantity) : null, // Set as null if empty
@@ -158,11 +161,13 @@ export async function POST(req, res) {
         totalpacket: totalpacket ? parseFloat(totalpacket) : null, // Set as null if empty
         customer_id: parseInt(customer_id),
         paymentStatus: paymentStatus,
-        note: note || product.note,
+        note: note || "",
       };
+      // console.log(saleData)
       const newSale = await prisma.sales.create({
         data: saleData,
       });
+      // console.log(newSale)
 
       // Update the product's quantity
       await prisma.products.update({
@@ -171,12 +176,18 @@ export async function POST(req, res) {
       });
 
       // step 4 conditionally create an entry "dueList",if paymentStatus "due"
+      const validCategories = ["FEED", "MEDICINE", "GROCERY"];
+
+      if (!validCategories.includes(category)) {
+        throw new Error(`Invalid category: ${category}`);
+      }
+
       if (paymentStatus === "due") {
         await prisma.dueList.create({
+          //TODO: data code are ago because prisma not migrate
           data: {
-            name: selected?.name,
-            productCategory: category,
-            subCategory: subCategory || null,
+            // productCategory: category,
+            // subCategory: subCategory || null,
             customer_id: parseInt(customer_id),
             amount: totalPrice ? parseFloat(totalPrice) : 0,
             note: note || product.note,
@@ -186,6 +197,7 @@ export async function POST(req, res) {
 
       return newSale;
     });
+  
     return NextResponse.json({ status: "ok", data: sale }, { status: 201 });
   } catch (error) {
     console.error("Error creating sale:", error.message);

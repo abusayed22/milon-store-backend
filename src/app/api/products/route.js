@@ -7,6 +7,7 @@ const prisma = new PrismaClient();
 export async function GET(req, res) {
   try {
     const products = await prisma.products.findMany();
+    console.log(products)
     return NextResponse.json({ status: "ok", data: products });
   } catch (error) {
     console.log(error.message)
@@ -18,8 +19,7 @@ export async function GET(req, res) {
 }
 export async function POST(req, res) {
   const { name, category,subCategory, perPackte, totalpackte, quantity, totalPrice, note } = await req.json();
- console.log(perPackte)
- console.log(totalpackte)
+
   try {
     const product = await prisma.products.create({
       data: {
