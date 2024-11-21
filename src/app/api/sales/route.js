@@ -1,13 +1,63 @@
 import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
-
+import { DateTime } from "@prisma/client";
 const prisma = new PrismaClient();
 
 // get all Sales List by category
 export async function GET(req, res) {
   try {
-    const sales = await prisma.sales.findMany({
-      include: {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Fetch sales with customer data
+    // const groupSale = await prisma.sales.groupBy({
+    //   by: ['customer_id'],
+    //   where: {
+    //     created_at: {
+    //       gte: today
+    //     }
+    //   },
+    //   _sum: {
+    //     salesPrice: true
+    //   },
+    //   _count: {
+    //     id: true // count of sales item
+    //   },
+    //   _avg: {
+    //     quantity: true // Average quantity (optional, based on requirements)
+    //   },
+    //   _min: {
+    //     updated_at: true  // Earliest transaction time
+    //   },
+    //   _max: {
+    //     created_at: true  //  Latest transaction time
+    //   },
+
+    // })
+
+    // const todaySales = await Promise.all(
+    //   groupSale.map(async (sale) => {
+    //     const customer = await prisma.customers.findUnique({
+    //       where: {
+    //         id: sale.customer_id
+    //       },
+    //       select: {name : true}
+    //     })
+    //     return {...sale,customerName: customer.name}
+    //   })
+
+    // )
+
+    const salesData = await prisma.sales.findMany({
+      where: {
+        created_at: {
+          gte: today, // Only today's sales
+        },
+      },
+      select: {
+        customer_id: true,
+        salesPrice: true,
+        paymentStatus: true,
         customers: {
           select: {
             name: true,
@@ -16,32 +66,55 @@ export async function GET(req, res) {
       },
     });
 
+    // Process the data to calculate totals
+    // Initialize variables for totals
     let totalSalesPrice = 0;
-    const formattedSales = sales.map((sale) => {
-      totalSalesPrice += sale.salesPrice; // Add each sale's price to total
+    let totalDueAmount = 0;
+    let totalCashAmount = 0;
 
-      return {
-        id: sale.id,
-        productName: sale.productName,
-        category: sale.category,
-        subCategory: sale.subCategory,
-        quantity: sale.quantity,
-        perPacket: sale.perPacket,
-        totalpacket: sale.totalpacket,
-        salesPrice: sale.salesPrice,
-        customer_id: sale.customer_id,
-        customerName: sale.customers?.name || null, // Include customer name
-        paymentStatus: sale.paymentStatus,
-        note: sale.note,
-        created_at: sale.created_at,
-        updated_at: sale.updated_at,
-      };
-    });
+    // Process sales data
+    const groupedData = salesData.reduce((acc, sale) => {
+      const customerId = sale.customer_id;
+
+      // Update overall totals
+      totalSalesPrice += sale.salesPrice;
+      if (sale.paymentStatus === "due") {
+        totalDueAmount += sale.salesPrice;
+      } else if (sale.paymentStatus === "paid") {
+        totalCashAmount += sale.salesPrice;
+      }
+
+      // Group data by customer
+      if (!acc[customerId]) {
+        acc[customerId] = {
+          customer_id: customerId,
+          customerName: sale.customers.name,
+          totalSalesAmount: 0,
+          totalDue: 0,
+          totalCash: 0,
+        };
+      }
+
+      acc[customerId].totalSalesAmount += sale.salesPrice;
+      if (sale.paymentStatus === "due") {
+        acc[customerId].totalDue += sale.salesPrice;
+      } else if (sale.paymentStatus === "paid") {
+        acc[customerId].totalCash += sale.salesPrice;
+      }
+
+      return acc;
+    }, {});
+
+    const todaySales = Object.values(groupedData);
 
     return NextResponse.json({
       status: "ok",
-      data: formattedSales,
-      totalSalesPrice,
+      data: todaySales,
+      totals: {
+        totalSalesPrice,
+        totalDueAmount,
+        totalCashAmount,
+      },
     });
   } catch (error) {
     console.log(error.message);
@@ -197,7 +270,7 @@ export async function POST(req, res) {
 
       return newSale;
     });
-  
+
     return NextResponse.json({ status: "ok", data: sale }, { status: 201 });
   } catch (error) {
     console.error("Error creating sale:", error.message);
