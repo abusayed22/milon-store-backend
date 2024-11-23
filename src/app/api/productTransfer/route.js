@@ -31,7 +31,6 @@ export async function POST(req, res) {
       customer_id,
       note,
     } = reqBody;
-    
 
     const selected = JSON.parse(selectedProduct);
 
@@ -45,6 +44,7 @@ export async function POST(req, res) {
     const product = await prisma.products.findFirst({
       where: { id: Number(selected?.id) },
     });
+    
 
     if (!product) {
       console.error("Product not found");
@@ -63,13 +63,14 @@ export async function POST(req, res) {
         { status: 400 }
       );
     }
+    console.log(perPacket)
 
     // Step 3: Create sale and update product quantity in a transaction
     const transfer = await prisma.$transaction(async (prisma) => {
       // Create the transfer
       const transferData = {
         productName: selected?.name,
-        product_id: selected?.id,
+        product_id: selected?.id ? parseInt(selected?.id) : null,
         category: category,
         subCategory: subCategory,
         quantity: quantity ? parseFloat(quantity) : null, // Set as null if empty
@@ -82,12 +83,22 @@ export async function POST(req, res) {
       });
 
       // Update the product's quantity
-      await prisma.products.update({
+      const updateProduct = await prisma.products.update({
         where: { id: product.id },
-        data: { quantity: product.quantity - quantity }, // Reduce the quantity
+        data: {
+          quantity: product.quantity - quantity,
+          totalpacket: product.totalpacket - totalpacket,
+        }, // Reduce the quantity
       });
 
-      
+      // step 4 Check if both quantity and totalpacket are 0
+      if (updateProduct.totalpacket <= 0) {
+        await prisma.products.delete({
+          where: {
+            id: product.id,
+          },
+        });
+      }
 
       return newTransfer;
     });

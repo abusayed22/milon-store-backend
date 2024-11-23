@@ -9,45 +9,6 @@ export async function GET(req, res) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    // Fetch sales with customer data
-    // const groupSale = await prisma.sales.groupBy({
-    //   by: ['customer_id'],
-    //   where: {
-    //     created_at: {
-    //       gte: today
-    //     }
-    //   },
-    //   _sum: {
-    //     salesPrice: true
-    //   },
-    //   _count: {
-    //     id: true // count of sales item
-    //   },
-    //   _avg: {
-    //     quantity: true // Average quantity (optional, based on requirements)
-    //   },
-    //   _min: {
-    //     updated_at: true  // Earliest transaction time
-    //   },
-    //   _max: {
-    //     created_at: true  //  Latest transaction time
-    //   },
-
-    // })
-
-    // const todaySales = await Promise.all(
-    //   groupSale.map(async (sale) => {
-    //     const customer = await prisma.customers.findUnique({
-    //       where: {
-    //         id: sale.customer_id
-    //       },
-    //       select: {name : true}
-    //     })
-    //     return {...sale,customerName: customer.name}
-    //   })
-
-    // )
-
     const salesData = await prisma.sales.findMany({
       where: {
         created_at: {
@@ -65,6 +26,7 @@ export async function GET(req, res) {
         },
       },
     });
+    // console.log(salesData)
 
     // Process the data to calculate totals
     // Initialize variables for totals
@@ -129,16 +91,57 @@ export async function GET(req, res) {
 export async function PATCH(req, res) {
   const { searchParams } = new URL(req.url);
   const userId = searchParams.get("userId");
+  const status = searchParams.get("status");
   const userid = Number(userId);
 
   try {
-    const sales = await prisma.sales.findMany({
-      where: { customer_id: userid },
-      orderBy: {
-        created_at: "desc",
-      },
-    });
-    return NextResponse.json({ status: "ok", data: sales });
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (status == "today") {
+      const sales = await prisma.sales.findMany({
+        where: {
+          customer_id: userid,
+          created_at: {
+            gte: today,
+          },
+        },
+        orderBy: {
+          created_at: "desc",
+        },
+      });
+
+      let totalSales = 0;
+      let totalDue = 0;
+      let totalCash = 0;
+
+      sales.forEach((s) => {
+        totalSales += s.salesPrice || 0;
+        if (s.paymentStatus === "due") {
+          totalDue += s.salesPrice || 0;
+        } else if (s.paymentStatus === "paid") {
+          totalCash += s.salesPrice || 0;
+        }
+      });
+
+      return NextResponse.json({
+        status: "ok",
+        data: sales,
+        totals: {
+          totalSales,
+          totalCash,
+          totalDue,
+        },
+      });
+    } else {
+      const sales = await prisma.sales.findMany({
+        where: { customer_id: userid },
+        orderBy: {
+          created_at: "desc",
+        },
+      });
+      return NextResponse.json({ status: "ok", data: sales });
+    }
   } catch (error) {
     console.log(error.message);
     return NextResponse.json({
@@ -243,12 +246,24 @@ export async function POST(req, res) {
       // console.log(newSale)
 
       // Update the product's quantity
-      await prisma.products.update({
+      const updateProduct = await prisma.products.update({
         where: { id: product.id },
-        data: { quantity: product.quantity - quantity }, // Reduce the quantity
+        data: {
+          quantity: product.quantity - quantity,
+          totalpacket: product.totalpacket - totalpacket,
+        }, // Reduce the quantity
       });
 
-      // step 4 conditionally create an entry "dueList",if paymentStatus "due"
+      // step 4 Check if both quantity and totalpacket are 0
+      if (updateProduct.totalpacket <= 0) {
+        await prisma.products.delete({
+          where: {
+            id: product.id,
+          },
+        });
+      }
+
+      // step 5 conditionally create an entry "dueList",if paymentStatus "due"
       const validCategories = ["FEED", "MEDICINE", "GROCERY"];
 
       if (!validCategories.includes(category)) {
@@ -259,8 +274,8 @@ export async function POST(req, res) {
         await prisma.dueList.create({
           //TODO: data code are ago because prisma not migrate
           data: {
-            // productCategory: category,
-            // subCategory: subCategory || null,
+            productCategory: category,
+            subCategory: subCategory || null,
             customer_id: parseInt(customer_id),
             amount: totalPrice ? parseFloat(totalPrice) : 0,
             note: note || product.note,

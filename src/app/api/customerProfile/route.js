@@ -20,7 +20,6 @@ export async function GET(req, res) {
 
       // get this customer sales amount
       if(saleId){
-        console.log("sale " + saleId)
         const saleAmount = await prisma.sales.aggregate({
           where:{customer_id:Number(saleId)},
           _sum: {

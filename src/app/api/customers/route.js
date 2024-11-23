@@ -23,7 +23,18 @@ export async function POST(req, res) {
     try {
       const reqData = await req.json(); // Parse the incoming request JSON data
   
-      // Use Prisma to create a new customer with the provided data
+      // const customer_phone =  reqData.phone;
+
+      const existingCustomerPhone = await prisma.customers.count({
+        where: {
+          phone: reqData.phone
+        }
+      })
+      if(existingCustomerPhone > 0) {
+        console.log("Customer with this phone number already exists:" + reqData.phone)
+        return NextResponse.json({ status: "faild", error: "Customer with this phone number already exists:" });
+      } else {
+        // Use Prisma to create a new customer with the provided data
       const newCustomer = await prisma.customers.create({
         data: {
           name: reqData.name,
@@ -34,6 +45,9 @@ export async function POST(req, res) {
       });
   
       return NextResponse.json({ status: "ok", data: newCustomer });
+      }
+
+      
     } catch (error) {
       console.log("Error creating customer:", error.message);
       return NextResponse.json({ status: 500, error: "Failed to create customer!" });
