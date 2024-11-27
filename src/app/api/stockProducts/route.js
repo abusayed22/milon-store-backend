@@ -25,10 +25,11 @@ export const GET = async (req) => {
                 subCategory: true,
                 perPacket:true,
                 totalpacket:true,
-                totalPrice:true,
+                unitPrice:true,
                 quantity:true,
             }
         })
+        console.log(productsByCategory)
 
         return NextResponse.json({status: 'ok',data:{productsByCategory}})
     } catch (error) {

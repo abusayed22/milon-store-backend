@@ -20,6 +20,7 @@ export async function GET(req, res) {
 // create trasnfer in trasnfer list by product and customer ,
 export async function POST(req, res) {
   try {
+
     const reqBody = await req.json();
     const {
       selectedProduct,
@@ -63,14 +64,13 @@ export async function POST(req, res) {
         { status: 400 }
       );
     }
-    console.log(perPacket)
+    
 
     // Step 3: Create sale and update product quantity in a transaction
     const transfer = await prisma.$transaction(async (prisma) => {
       // Create the transfer
       const transferData = {
         productName: selected?.name,
-        product_id: selected?.id ? parseInt(selected?.id) : null,
         category: category,
         subCategory: subCategory,
         quantity: quantity ? parseFloat(quantity) : null, // Set as null if empty
@@ -95,7 +95,7 @@ export async function POST(req, res) {
       if (updateProduct.totalpacket <= 0) {
         await prisma.products.delete({
           where: {
-            id: product.id,
+            id: parseInt(product.id),
           },
         });
       }

@@ -25,12 +25,12 @@ export async function GET(req) {
           },
         },
         _sum: {
-          salesPrice: true,
+          discountedPrice: true,
           quantity: true,
         },
       });
 
-      const feedSalesAmount = feedSales._sum.salesPrice || 0;
+      const feedSalesAmount = feedSales._sum.discountedPrice || 0;
       const feedSalesQuantity = feedSales._sum.quantity || 0;
 
       // Get today's total amount and quantity for "MEDICINE" category
@@ -42,12 +42,12 @@ export async function GET(req) {
           },
         },
         _sum: {
-          salesPrice: true,
+          discountedPrice: true,
           quantity: true,
         },
       });
 
-      const medicineSalesAmount = medicineSales._sum.salesPrice || 0;
+      const medicineSalesAmount = medicineSales._sum.discountedPrice || 0;
       const medicineSalesQuantity = medicineSales._sum.quantity || 0;
 
       // Get today's total amount and quantity for "GROCERY" category
@@ -59,12 +59,12 @@ export async function GET(req) {
           },
         },
         _sum: {
-          salesPrice: true,
+          discountedPrice: true,
           quantity: true,
         },
       });
 
-      const grocerySalesAmount = grocerySales._sum.salesPrice || 0;
+      const grocerySalesAmount = grocerySales._sum.discountedPrice || 0;
       const grocerySalesQuantity = grocerySales._sum.quantity || 0;
 
       // Return the aggregated results
@@ -95,10 +95,11 @@ export async function GET(req) {
           },
         },
         _sum: {
-          salesPrice: true,
+          discountedPrice: true,
         },
       });
-      const totalSalesAmount = totalSales._sum.salesPrice || 0;
+      const totalSalesAmount = totalSales._sum.discountedPrice || 0;
+      
 
       // Calculate total expenses for today
       const totalExpenses = await prisma.expneses.aggregate({
@@ -127,7 +128,7 @@ export async function GET(req) {
         },
       });
       const totalCollectedAmount = totalCollectedPayment._sum.amount || 0;
-
+      // console.log(totalCollectedAmount)
       return NextResponse.json({
         status: "ok",
         availableCash,

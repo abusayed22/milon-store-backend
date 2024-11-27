@@ -17,18 +17,17 @@ model subCategory {
 }
 
 model products {
-  id                  Int                   @id @unique @default(autoincrement())
-  name                String
-  category            categoryType
-  subCategory         String?
-  perPacket           Float?
-  totalpacket         Float?
-  quantity            Int
-  totalPrice          Int
-  note                String                @db.LongText
-  created_at          DateTime              @default(now()) @db.Timestamp(0)
-  updated_at          DateTime              @default(now()) @updatedAt @db.Timestamp(0)
-  productTransferList productTransferList[]
+  id          Int          @id @unique @default(autoincrement())
+  name        String
+  category    categoryType
+  subCategory String?
+  perPacket   Float?
+  totalpacket Float?
+  quantity    Int
+  unitPrice   Int
+  note        String       @db.LongText
+  created_at  DateTime     @default(now()) @db.Timestamp(0)
+  updated_at  DateTime     @default(now()) @updatedAt @db.Timestamp(0)
 }
 
 model productTransferList {
@@ -38,14 +37,10 @@ model productTransferList {
   perPacket   Float?
   totalpacket Float?
   quantity    Int
-  product_id  Int
   productName String
   note        String        @db.LongText
   created_at  DateTime      @default(now()) @db.Timestamp(0)
   updated_at  DateTime      @default(now()) @updatedAt @db.Timestamp(0)
-  products    products      @relation(fields: [product_id], references: [id])
-
-  @@index([product_id], map: "productTransferList_product_id_fkey")
 }
 
 model customers {
@@ -62,20 +57,22 @@ model customers {
 }
 
 model sales {
-  id            Int           @id @unique @default(autoincrement())
-  productName   String
-  category      categoryType?
-  subCategory   String?
-  quantity      Float
-  perPacket     Float?
-  totalpacket   Float?
-  salesPrice    Float
-  customer_id   Int
-  paymentStatus paymentStatus
-  note          String        @db.LongText
-  created_at    DateTime      @default(now()) @db.Timestamp(0)
-  updated_at    DateTime      @default(now()) @updatedAt @db.Timestamp(0)
-  customers     customers     @relation(fields: [customer_id], references: [id])
+  id              Int           @id @unique @default(autoincrement())
+  productName     String
+  category        categoryType?
+  subCategory     String?
+  quantity        Float
+  perPacket       Float?
+  totalpacket     Float?
+  totalPrice      Float
+  customer_id     Int
+  paymentStatus   paymentStatus
+  discount        Int
+  discountedPrice Float
+  note            String        @db.LongText
+  created_at      DateTime      @default(now()) @db.Timestamp(0)
+  updated_at      DateTime      @default(now()) @updatedAt @db.Timestamp(0)
+  customers       customers     @relation(fields: [customer_id], references: [id])
 
   @@index([customer_id], map: "sales_customer_id_fkey")
 }

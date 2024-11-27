@@ -7,7 +7,7 @@ const prisma = new PrismaClient();
 export async function GET(req, res) {
   try {
     const products = await prisma.products.findMany();
-    console.log(products)
+    
     return NextResponse.json({ status: "ok", data: products });
   } catch (error) {
     console.log(error.message)
@@ -21,7 +21,7 @@ export async function GET(req, res) {
 
 // product add 
 export async function POST(req, res) {
-  const { name, category,subCategory, perPackte, totalpackte, quantity, totalPrice, note } = await req.json();
+  const { name, category,subCategory, perPackte, totalpackte, quantity, unitPrice, note } = await req.json();
 
   try {
     const product = await prisma.products.create({
@@ -32,7 +32,7 @@ export async function POST(req, res) {
         perPacket: perPackte ? parseFloat(perPackte) : null,// Corrected from `perPackte` to `perPacket`
         totalpacket: totalpackte ? parseFloat(totalpackte) : null, 
         quantity: parseInt(quantity),
-        totalPrice: parseFloat(totalPrice),
+        unitPrice: parseFloat(unitPrice),
         note: note || "null",
       },
     });
