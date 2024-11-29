@@ -26,7 +26,6 @@ export async function GET(req, res) {
         },
       },
     });
-    // console.log(salesData)
 
     // Process the data to calculate totals
     // Initialize variables for totals
@@ -68,6 +67,7 @@ export async function GET(req, res) {
     }, {});
 
     const todaySales = Object.values(groupedData);
+   
 
     return NextResponse.json({
       status: "ok",
@@ -114,13 +114,14 @@ export async function PATCH(req, res) {
       let totalSales = 0;
       let totalDue = 0;
       let totalCash = 0;
+      
 
       sales.forEach((s) => {
-        totalSales += s.salesPrice || 0;
+        totalSales += s.discountedPrice || 0;
         if (s.paymentStatus === "due") {
-          totalDue += s.salesPrice || 0;
+          totalDue += s.discountedPrice || 0;
         } else if (s.paymentStatus === "paid") {
-          totalCash += s.salesPrice || 0;
+          totalCash += s.discountedPrice || 0;
         }
       });
 
