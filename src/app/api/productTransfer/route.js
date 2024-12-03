@@ -33,17 +33,18 @@ export async function POST(req, res) {
       note,
     } = reqBody;
 
-    const selected = JSON.parse(selectedProduct);
+    
+    // const selected = JSON.parse(selectedProduct);
 
     // if sub category not have
     const whereCondition = {
-      id: Number(selected?.id),
-      name: selected?.name,
+      id: Number(selectedProduct?.id),
+      name: selectedProduct?.name,
     };
 
     // Step 1: Fetch product details from the `products` table based on `productName`
     const product = await prisma.products.findFirst({
-      where: { id: Number(selected?.id) },
+      where: { id: Number(selectedProduct?.id) },
     });
     
 
@@ -70,7 +71,7 @@ export async function POST(req, res) {
     const transfer = await prisma.$transaction(async (prisma) => {
       // Create the transfer
       const transferData = {
-        productName: selected?.name,
+        productName: selectedProduct?.name,
         category: category,
         subCategory: subCategory,
         quantity: quantity ? parseFloat(quantity) : null, // Set as null if empty

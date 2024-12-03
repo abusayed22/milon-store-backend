@@ -23,10 +23,10 @@ export async function GET(req, res) {
         const saleAmount = await prisma.sales.aggregate({
           where:{customer_id:Number(saleId)},
           _sum: {
-            salesPrice: true
+            discountedPrice: true
           }
         })
-        const totalSaleAmount = saleAmount._sum.salesPrice || 0;
+        const totalSaleAmount = saleAmount._sum.discountedPrice || 0;
         return NextResponse.json({ status: "ok", data: totalSaleAmount })
       }
       

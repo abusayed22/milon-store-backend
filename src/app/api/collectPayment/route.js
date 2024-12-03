@@ -6,16 +6,46 @@ const prisma = new PrismaClient();
 // get all collect payment
 export async function GET(req, res) {
   try {
+    const { searchParams } = new URL(req.url);
+    const page = searchParams.get("page");
+    const pageSize = searchParams.get("pageSize");
+    const pageInt = parseInt(page);
+    const pageSizeInt = parseInt(pageSize);
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
     const amount = await prisma.collectPayment.findMany({
       include: {
         customerName: {
-          select:{
-            name:true
-          }
-        }
-      }
+          select: {
+            name: true,
+          },
+        },
+      },
+      skip: (pageInt - 1) * pageSizeInt,
+      take: pageSizeInt,
     });
-    return NextResponse.json({ status: "ok", data: amount });
+
+    const countCollect = await prisma.collectPayment.count({
+      where: {
+        created_at: {
+          gte: today,
+        },
+      },
+    });
+    const totalPage = Math.ceil(countCollect / pageSizeInt);
+    
+
+    return NextResponse.json({
+      status: "ok",
+      data: amount,
+      pagination: {
+        currentPage: pageInt,
+        pageSize: pageSizeInt,
+        totalPage,
+      },
+    });
   } catch (error) {
     console.log(error.message);
     return NextResponse.json({
@@ -29,6 +59,10 @@ export async function GET(req, res) {
 export async function PATCH(req, res) {
   const { searchParams } = new URL(req.url);
   const userId = searchParams.get("userId");
+  const page = searchParams.get("page");
+  const pageSize = searchParams.get("pageSize");
+  const pageInt = parseInt(page)
+  const pageSizeInt = parseInt(pageSize)
   const userid = Number(userId);
   try {
     const paymentHistory = await prisma.collectPayment.findMany({
@@ -39,8 +73,17 @@ export async function PATCH(req, res) {
       orderBy: {
         created_at: "desc",
       },
+      skip:(pageInt -1) * pageSizeInt,
+      take: pageSizeInt
     });
-    return NextResponse.json({ status: "ok", data: paymentHistory });
+    const collectPaymentCount = await prisma.collectPayment.count()
+    const totalPage = Math.ceil(collectPaymentCount / pageSizeInt);
+
+    return NextResponse.json({ status: "ok", data: paymentHistory,pagination: {
+      currentPage: pageInt,
+      pageSize: pageSizeInt,
+      totalPage,
+    }, });
     // return paymentHistory
   } catch (error) {
     console.log("Error fetching customers:", error.message);
@@ -54,7 +97,7 @@ export async function PATCH(req, res) {
 // create collect payment
 export async function POST(req, res) {
   const reqData = await req.json();
-  
+
   const { customer_id, amount, note } = reqData;
   try {
     const collectPayment = await prisma.collectPayment.create({
@@ -63,11 +106,11 @@ export async function POST(req, res) {
         amount: parseFloat(amount),
         note: note || "",
       },
-      include:{
-        customerName:{
-          select:{name:true}
-        }
-      }
+      include: {
+        customerName: {
+          select: { name: true },
+        },
+      },
     });
     return NextResponse.json({ status: "ok", data: collectPayment });
   } catch (error) {

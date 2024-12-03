@@ -6,15 +6,72 @@ const prisma = new PrismaClient();
 // get all Sales List by category
 export async function GET(req, res) {
   try {
+    const { searchParams } = new URL(req.url);
+    const page = searchParams.get("page");
+    const pageSize = searchParams.get("pageSize");
+    const pageInt = parseInt(page);
+    const pageSizeInt = parseInt(pageSize);
+
+    if (pageInt <= 0 || pageSizeInt <= 0) {
+      return NextResponse.json({
+        status: 400,
+        error: " Invalid Pagination parametters",
+      });
+    }
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
+    // ----------today total calculation ----------
+
+    // Query to get total sales, total due, and total cash for today
+    const totalSalesCalculation = await prisma.sales.aggregate({
+      _sum: {
+        discountedPrice: true, // Sum all discounted prices for sales
+      },
+      where: {
+        created_at: {
+          gte: today, // Only today's sales
+        },
+      },
+    });
+
+    // Second, get the total sales grouped by payment status (due or paid)
+    const groupedByPaymentStatus = await prisma.sales.groupBy({
+      by: ["paymentStatus"], // Group by paymentStatus
+      _sum: {
+        discountedPrice: true, // Sum the discountedPrice for each group
+      },
+      where: {
+        created_at: {
+          gte: today, // Only today's sales
+        },
+      },
+    });
+
+    // Calculate today totals for sales, due, and cash
+    let todayTotalSalesPrice = totalSalesCalculation._sum.discountedPrice || 0;
+    let todayTotalDueAmount = 0;
+    let todayTotalCashAmount = 0;
+
+    // Process the grouped data
+    groupedByPaymentStatus.forEach((group) => {
+      if (group.paymentStatus === "due") {
+        todayTotalDueAmount = group._sum.discountedPrice || 0;
+      } else if (group.paymentStatus === "paid") {
+        todayTotalCashAmount = group._sum.discountedPrice || 0;
+      }
+    });
+
+    // ----------- today total calculation with group by customer & Pagination TODO: ------
     const salesData = await prisma.sales.findMany({
       where: {
         created_at: {
           gte: today, // Only today's sales
         },
       },
+      skip: (pageInt - 1) * pageSizeInt,
+      take: pageSizeInt,
       select: {
         customer_id: true,
         discountedPrice: true,
@@ -27,13 +84,22 @@ export async function GET(req, res) {
       },
     });
 
+    // Count the total number of sales for pagination
+    const totalSalesCount = await prisma.sales.count({
+      where: {
+        created_at: {
+          gte: today, // Only today's sales
+        },
+      },
+    });
+
     // Process the data to calculate totals
     // Initialize variables for totals
     let totalSalesPrice = 0;
     let totalDueAmount = 0;
     let totalCashAmount = 0;
 
-    // Process sales data
+    // Process sales data TODO:
     const groupedData = salesData.reduce((acc, sale) => {
       const customerId = sale.customer_id;
 
@@ -67,15 +133,20 @@ export async function GET(req, res) {
     }, {});
 
     const todaySales = Object.values(groupedData);
-   
 
     return NextResponse.json({
       status: "ok",
       data: todaySales,
-      totals: {
-        totalSalesPrice,
-        totalDueAmount,
-        totalCashAmount,
+      todayTotals: {
+        todayTotalSalesPrice,
+        todayTotalDueAmount,
+        todayTotalCashAmount,
+      },
+      pagination: {
+        currentPage: pageInt,
+        pageSize: pageSizeInt,
+        totalSales: totalSalesCount,
+        totalPage: Math.ceil(totalSalesCount / pageSizeInt),
       },
     });
   } catch (error) {
@@ -93,6 +164,10 @@ export async function PATCH(req, res) {
   const userId = searchParams.get("userId");
   const status = searchParams.get("status");
   const userid = Number(userId);
+  const page = searchParams.get("page");
+  const pageSize = searchParams.get("pageSize");
+  const pageInt = parseInt(page);
+  const pageSizeInt = parseInt(pageSize);
 
   try {
     const today = new Date();
@@ -109,14 +184,39 @@ export async function PATCH(req, res) {
         orderBy: {
           created_at: "desc",
         },
+        skip: (pageInt - 1) * pageSizeInt,
+        take: pageSizeInt,
       });
 
       let totalSales = 0;
       let totalDue = 0;
       let totalCash = 0;
-      
 
-      sales.forEach((s) => {
+      const salesData = await prisma.sales.findMany({
+        where: {
+          customer_id: userid,
+          created_at: {
+            gte: today,
+          },
+        },
+        orderBy: {
+          created_at: "desc",
+        },
+      });
+
+      // total page calculation
+      const totalCount = await prisma.sales.count({
+        where: {
+          customer_id: userid,
+          created_at: {
+            gte: today,
+          },
+        },
+      });
+      const totalPage = Math.ceil(totalCount / pageSizeInt);
+   
+
+      salesData.forEach((s) => {
         totalSales += s.discountedPrice || 0;
         if (s.paymentStatus === "due") {
           totalDue += s.discountedPrice || 0;
@@ -133,6 +233,11 @@ export async function PATCH(req, res) {
           totalCash,
           totalDue,
         },
+        pagination: {
+          currentPage: pageInt,
+          pageSize: pageSizeInt,
+          totalPage,
+        },
       });
     } else {
       const sales = await prisma.sales.findMany({
@@ -140,8 +245,31 @@ export async function PATCH(req, res) {
         orderBy: {
           created_at: "desc",
         },
+        skip: (pageInt - 1) * pageSizeInt,
+        take: pageSizeInt,
       });
-      return NextResponse.json({ status: "ok", data: sales });
+
+      // total page calculation
+      const totalCount = await prisma.sales.count({
+        where: {
+          customer_id: userid,
+          // created_at: {
+          //   gte: today,
+          // },
+        },
+      });
+      const totalPage = Math.ceil(totalCount / pageSizeInt);
+      
+
+      return NextResponse.json({
+        status: "ok",
+        data: sales,
+        pagination: {
+          currentPage: pageInt,
+          pageSize: pageSizeInt,
+          totalPage,
+        },
+      });
     }
   } catch (error) {
     console.log(error.message);
@@ -162,10 +290,10 @@ export async function OPTIONS(req, res) {
     const due = await prisma.sales.aggregate({
       where: { customer_id: userid, paymentStatus: "due" },
       _sum: {
-        salesPrice: true,
+        discountedPrice: true,
       },
     });
-    const totalDue = due._sum.salesPrice || 0;
+    const totalDue = due._sum.discountedPrice || 0;
     return NextResponse.json({ status: "ok", data: totalDue });
   } catch (error) {
     console.log(error.message);
@@ -228,8 +356,12 @@ export async function POST(req, res) {
         });
 
         if (product.quantity < categoryCount) {
-          console.error(`Insufficient product quantity for: ${selectedProduct.name}`);
-          throw new Error(`Insufficient product quantity for: ${selectedProduct.name}`);
+          console.error(
+            `Insufficient product quantity for: ${selectedProduct.name}`
+          );
+          throw new Error(
+            `Insufficient product quantity for: ${selectedProduct.name}`
+          );
         }
 
         // Step 3: Create sale and update product quantity
@@ -267,13 +399,13 @@ export async function POST(req, res) {
           //   });
           // }
 
-          if(updatedProduct.category === "FEED"){
-            if(updatedProduct.totalpacket <= 0){
+          if (updatedProduct.category === "FEED") {
+            if (updatedProduct.totalpacket <= 0) {
               await prisma.products.delete({
                 where: { id: product.id },
               });
             } else {
-              if(updatedProduct.quantity <= 0){
+              if (updatedProduct.quantity <= 0) {
                 await prisma.products.delete({
                   where: { id: product.id },
                 });
