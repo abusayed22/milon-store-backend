@@ -11,6 +11,7 @@ export async function GET(req, res) {
     const pageSize = searchParams.get("pageSize");
     const pageInt = parseInt(page);
     const pageSizeInt = parseInt(pageSize);
+    
 
     // Use Prisma to retrieve all customers
     const customers = await prisma.customers.findMany({

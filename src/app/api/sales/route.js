@@ -64,6 +64,22 @@ export async function GET(req, res) {
     });
 
     // ----------- today total calculation with group by customer & Pagination TODO: ------
+    const se = await prisma.sales.findMany({
+      where:{
+        created_at: {
+          gte:today,
+        },
+        
+      },
+      skip:(pageInt -1) * pageSizeInt,
+      take: pageSizeInt,
+      select: {
+        customer_id:true,
+        discountedPrice: true,
+        paymentStatus:true,
+      },
+      
+    })
     const salesData = await prisma.sales.findMany({
       where: {
         created_at: {
@@ -83,6 +99,7 @@ export async function GET(req, res) {
         },
       },
     });
+    
 
     // Count the total number of sales for pagination
     const totalSalesCount = await prisma.sales.count({
@@ -168,6 +185,7 @@ export async function PATCH(req, res) {
   const pageSize = searchParams.get("pageSize");
   const pageInt = parseInt(page);
   const pageSizeInt = parseInt(pageSize);
+  
 
   try {
     const today = new Date();
@@ -184,8 +202,8 @@ export async function PATCH(req, res) {
         orderBy: {
           created_at: "desc",
         },
-        skip: (pageInt - 1) * pageSizeInt,
-        take: pageSizeInt,
+        // skip: (pageInt - 1) * pageSizeInt,
+        // take: pageSizeInt,
       });
 
       let totalSales = 0;
@@ -245,8 +263,8 @@ export async function PATCH(req, res) {
         orderBy: {
           created_at: "desc",
         },
-        skip: (pageInt - 1) * pageSizeInt,
-        take: pageSizeInt,
+        // skip: (pageInt - 1) * pageSizeInt,
+        // take: pageSizeInt,
       });
 
       // total page calculation
@@ -275,7 +293,7 @@ export async function PATCH(req, res) {
     console.log(error.message);
     return NextResponse.json({
       status: 500,
-      error: "Failed to get all categories!",
+      error: "Failed to get sales history!",
     });
   }
 }
@@ -364,6 +382,7 @@ export async function POST(req, res) {
           );
         }
 
+        // console.log(customer_id)
         // Step 3: Create sale and update product quantity
         return await prisma.$transaction(async (prisma) => {
           const newSale = await prisma.sales.create({

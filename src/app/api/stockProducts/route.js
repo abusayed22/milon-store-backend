@@ -29,7 +29,6 @@ export const GET = async (req) => {
                 quantity:true,
             }
         })
-        console.log(productsByCategory)
 
         return NextResponse.json({status: 'ok',data:{productsByCategory}})
     } catch (error) {
