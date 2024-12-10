@@ -16,6 +16,11 @@ export async function GET(req, res) {
     today.setHours(0, 0, 0, 0);
 
     const amount = await prisma.collectPayment.findMany({
+      where: {
+        created_at: {
+          gte: today,
+        },
+      },
       include: {
         customerName: {
           select: {
@@ -35,7 +40,7 @@ export async function GET(req, res) {
       },
     });
     const totalPage = Math.ceil(countCollect / pageSizeInt);
-    
+
 
     return NextResponse.json({
       status: "ok",

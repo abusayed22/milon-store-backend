@@ -64,30 +64,14 @@ export async function GET(req, res) {
     });
 
     // ----------- today total calculation with group by customer & Pagination TODO: ------
-    const se = await prisma.sales.findMany({
-      where:{
-        created_at: {
-          gte:today,
-        },
-        
-      },
-      skip:(pageInt -1) * pageSizeInt,
-      take: pageSizeInt,
-      select: {
-        customer_id:true,
-        discountedPrice: true,
-        paymentStatus:true,
-      },
-      
-    })
     const salesData = await prisma.sales.findMany({
       where: {
         created_at: {
           gte: today, // Only today's sales
         },
       },
-      skip: (pageInt - 1) * pageSizeInt,
-      take: pageSizeInt,
+      // skip: (pageInt - 1) * pageSizeInt,
+      // take: pageSizeInt,
       select: {
         customer_id: true,
         discountedPrice: true,
@@ -99,7 +83,6 @@ export async function GET(req, res) {
         },
       },
     });
-    
 
     // Count the total number of sales for pagination
     const totalSalesCount = await prisma.sales.count({
@@ -115,18 +98,19 @@ export async function GET(req, res) {
     let totalSalesPrice = 0;
     let totalDueAmount = 0;
     let totalCashAmount = 0;
+    // console.log(salesData)
 
     // Process sales data TODO:
     const groupedData = salesData.reduce((acc, sale) => {
       const customerId = sale.customer_id;
 
       // Update overall totals
-      totalSalesPrice += sale.discountedPrice;
-      if (sale.paymentStatus === "due") {
-        totalDueAmount += sale.discountedPrice;
-      } else if (sale.paymentStatus === "paid") {
-        totalCashAmount += sale.discountedPrice;
-      }
+      // totalSalesPrice += sale.discountedPrice;
+      // if (sale.paymentStatus === "due") {
+      //   totalDueAmount += sale.discountedPrice;
+      // } else if (sale.paymentStatus === "paid") {
+      //   totalCashAmount += sale.discountedPrice;
+      // }
 
       // Group data by customer
       if (!acc[customerId]) {
@@ -146,14 +130,21 @@ export async function GET(req, res) {
         acc[customerId].totalCash += sale.discountedPrice;
       }
 
+      // console.log(acc[customerId]);
       return acc;
     }, {});
 
     const todaySales = Object.values(groupedData);
+    const paginatedSales = todaySales.slice(
+      (pageInt - 1) * pageSizeInt,
+      pageInt * pageSizeInt
+    );
+    const totalRecords = todaySales.length; // Total number of grouped customers
+    const totalPages = Math.ceil(totalRecords / pageSizeInt);
 
     return NextResponse.json({
       status: "ok",
-      data: todaySales,
+      data: paginatedSales,
       todayTotals: {
         todayTotalSalesPrice,
         todayTotalDueAmount,
@@ -163,7 +154,7 @@ export async function GET(req, res) {
         currentPage: pageInt,
         pageSize: pageSizeInt,
         totalSales: totalSalesCount,
-        totalPage: Math.ceil(totalSalesCount / pageSizeInt),
+        totalPage: totalPages,
       },
     });
   } catch (error) {
@@ -185,7 +176,6 @@ export async function PATCH(req, res) {
   const pageSize = searchParams.get("pageSize");
   const pageInt = parseInt(page);
   const pageSizeInt = parseInt(pageSize);
-  
 
   try {
     const today = new Date();
@@ -232,7 +222,6 @@ export async function PATCH(req, res) {
         },
       });
       const totalPage = Math.ceil(totalCount / pageSizeInt);
-   
 
       salesData.forEach((s) => {
         totalSales += s.discountedPrice || 0;
@@ -277,7 +266,6 @@ export async function PATCH(req, res) {
         },
       });
       const totalPage = Math.ceil(totalCount / pageSizeInt);
-      
 
       return NextResponse.json({
         status: "ok",
@@ -349,9 +337,6 @@ export async function POST(req, res) {
           discount,
         } = saleData;
 
-        // if (!selectedProduct || !selectedProduct.id || !selectedProduct.name) {
-        //   throw new Error("Invalid selectedProduct data");
-        // }
 
         const whereCondition = {
           id: Number(selectedProduct?.id),
@@ -382,83 +367,73 @@ export async function POST(req, res) {
           );
         }
 
-        // console.log(customer_id)
         // Step 3: Create sale and update product quantity
-        return await prisma.$transaction(async (prisma) => {
-          const newSale = await prisma.sales.create({
-            data: {
-              productName: selectedProduct?.name,
-              category,
-              subCategory,
-              quantity: parseFloat(quantity) || null,
-              perPacket: parseFloat(perPacket) || null,
-              totalpacket: parseFloat(totalpacket) || null,
-              totalPrice: parseFloat(totalPrice),
-              discountedPrice: parseFloat(discountedPrice),
-              discount: parseInt(discount) || 0,
-              customer_id: parseInt(customer_id) || null,
-              paymentStatus,
-              note: note || "",
-            },
-          });
-
-          // Update the product's quantity
-          const updatedProduct = await prisma.products.update({
-            where: { id: product.id },
-            data: {
-              quantity: product.quantity - parseFloat(quantity),
-              totalpacket: product.totalpacket - parseFloat(totalpacket || 0),
-            },
-          });
-
-          // Delete product if out of stock TODO:
-          // if (updatedProduct.quantity <= 0 || ) {
-          //   await prisma.products.delete({
-          //     where: { id: product.id },
-          //   });
-          // }
-
-          if (updatedProduct.category === "FEED") {
-            if (updatedProduct.totalpacket <= 0) {
-              await prisma.products.delete({
-                where: { id: product.id },
-              });
-            } else {
-              if (updatedProduct.quantity <= 0) {
-                await prisma.products.delete({
-                  where: { id: product.id },
-                });
-              }
-            }
-          }
-
-          // Create due list if paymentStatus is "due"
-          const validCategories = ["FEED", "MEDICINE", "GROCERY"];
-          if (!validCategories.includes(category)) {
-            throw new Error(`Invalid category: ${category}`);
-          }
-
-          if (paymentStatus === "due") {
-            await prisma.dueList.create({
+        // console.log(customer_id)
+        return await prisma
+        .$transaction(async (prisma) => {
+            const newSale = await prisma.sales.create({
               data: {
-                productCategory: category,
-                subCategory: subCategory || null,
-                customer_id: parseInt(customer_id) || null,
-                amount: parseFloat(discountedPrice) || 0,
+                productName: selectedProduct?.name,
+                category,
+                subCategory,
+                quantity: parseFloat(quantity) || null,
+                perPacket: parseFloat(perPacket) || null,
+                totalpacket: parseFloat(totalpacket) || null,
+                totalPrice: parseFloat(totalPrice),
+                discountedPrice: parseFloat(discountedPrice),
+                discount: parseInt(discount) || 0,
+                customer_id: parseInt(customer_id) ,
+                paymentStatus,
                 note: note || "",
               },
             });
-          }
 
-          return newSale;
-        });
+            // Update the product's quantity
+            const updatedProduct = await prisma.products.update({
+              where: { id: product.id },
+              data: {
+                quantity: product.quantity - parseFloat(quantity),
+                totalpacket: product.totalpacket - parseFloat(totalpacket || 0),
+              },
+            });
+
+            if (
+              updatedProduct.totalpacket <= 0 ||
+              updatedProduct.quantity <= 0
+            ) {
+              await prisma.products.delete({
+                where: { id: product.id },
+              });
+            }
+
+            // Create due list if paymentStatus is "due"
+            const validCategories = ["FEED", "MEDICINE", "GROCERY"];
+            if (!validCategories.includes(category)) {
+              throw new Error(`Invalid category: ${category}`);
+            }
+
+            return newSale;
+          })
+          .then(async (newSale) => {
+            if (paymentStatus === "due") {
+              await prisma.dueList.create({
+                data: {
+                  productCategory: category,
+                  subCategory: subCategory || null,
+                  customer_id: parseInt(customer_id) || null,
+                  amount: parseFloat(discountedPrice) || 0,
+                  note: note || "",
+                },
+              });
+            }
+          });
       })
     );
 
     // Return all created sales as response
     return NextResponse.json({ status: "ok", data: results });
   } catch (error) {
-    console.error("Error processing sales:", error.message);
+    console.error( error.message);
     return NextResponse.json({ error: error.message });
   }
 }
