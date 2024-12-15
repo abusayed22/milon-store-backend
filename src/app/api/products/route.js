@@ -36,6 +36,7 @@ export async function POST(req, res) {
         note: note || "null",
       },
     });
+    console.log(product)
     return NextResponse.json({ status: "ok", data: product });
   } catch (error) {
     console.log(error.message);

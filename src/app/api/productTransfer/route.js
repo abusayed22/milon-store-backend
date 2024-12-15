@@ -82,24 +82,49 @@ export async function POST(req, res) {
       const newTransfer = await prisma.productTransferList.create({
         data: transferData,
       });
-
+// console.log(transferData)
       // Update the product's quantity
-      const updateProduct = await prisma.products.update({
-        where: { id: product.id },
-        data: {
-          quantity: product.quantity - quantity,
-          totalpacket: product.totalpacket - totalpacket,
-        }, // Reduce the quantity
-      });
+      let updatedProduct;
+      if(category !== "FEED") {
+        updatedProduct = await prisma.products.update({
+          where: { id: product.id },
+          data: {
+            quantity: product.quantity - quantity,
+            // totalpacket: product.totalpacket - totalpacket,
+          }, 
+        });
+        // updatedProduct = updateCalculationProduct;
+      }else {
+        updatedProduct = await prisma.products.update({
+          where: { id: product.id },
+          data: {
+            quantity: product.quantity - quantity,
+            totalpacket: product.totalpacket - totalpacket,
+          }, // Reduce the quantity
+        });
+        // updatedProduct = updateCalculationProduct;
+      }
+      
 
       // step 4 Check if both quantity and totalpacket are 0
-      if (updateProduct.totalpacket <= 0) {
-        await prisma.products.delete({
-          where: {
-            id: parseInt(product.id),
-          },
-        });
+      if(updatedProduct.category !== "FEED"){
+        if (updatedProduct.quantity <= 0) {
+          await prisma.products.delete({
+            where: {
+              id: parseInt(product.id),
+            },
+          });
+        }
+      } else{
+        if (updatedProduct.totalpacket <= 0) {
+          await prisma.products.delete({
+            where: {
+              id: parseInt(product.id),
+            },
+          });
+        }
       }
+      
 
       return newTransfer;
     });
