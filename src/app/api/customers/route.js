@@ -17,6 +17,9 @@ export async function GET(req, res) {
     const customers = await prisma.customers.findMany({
       skip: (pageInt - 1) * pageSizeInt,
       take: pageSizeInt,
+      orderBy:{
+        created_at:"desc"
+      }
     });
     const totalCustomerCount = await prisma.customers.count();
     const totalPage = Math.ceil(totalCustomerCount / pageSizeInt);

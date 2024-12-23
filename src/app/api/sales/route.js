@@ -319,6 +319,7 @@ export async function POST(req, res) {
     if (!Array.isArray(reqBody)) {
       return NextResponse.json({ error: "Expected an array of sales data" });
     }
+    // console.log(reqBody);
 
     const results = await Promise.all(
       reqBody.map(async (saleData) => {
@@ -337,7 +338,6 @@ export async function POST(req, res) {
           discount,
         } = saleData;
 
-
         const whereCondition = {
           id: Number(selectedProduct?.id),
           name: selectedProduct?.name,
@@ -345,12 +345,18 @@ export async function POST(req, res) {
 
         // Step 1: Fetch product details
         const product = await prisma.products.findFirst({
-          where: { id: Number(selectedProduct?.id) },
+          where: {
+            AND: [
+              { id: Number(selectedProduct?.id) }, // Match by ID
+              { name: selectedProduct?.name },
+            ],
+          },
         });
 
         if (!product) {
           console.error(`Product not found: ${selectedProduct.name}`);
-          throw new Error(`Product not found: ${selectedProduct.name}`);
+          // Optionally, return a more informative response or skip this sale
+          return NextResponse.json({ error: `Product not found: ${selectedProduct.name}` }, { status: 404 });
         }
 
         // Step 2: Validate product quantity
@@ -370,7 +376,7 @@ export async function POST(req, res) {
         // Step 3: Create sale and update product quantity
         // console.log(customer_id)
         return await prisma
-        .$transaction(async (prisma) => {
+          .$transaction(async (prisma) => {
             const newSale = await prisma.sales.create({
               data: {
                 productName: selectedProduct?.name,
@@ -382,7 +388,7 @@ export async function POST(req, res) {
                 totalPrice: parseFloat(totalPrice),
                 discountedPrice: parseFloat(discountedPrice),
                 discount: parseInt(discount) || 0,
-                customer_id: parseInt(customer_id) ,
+                customer_id: parseInt(customer_id),
                 paymentStatus,
                 note: note || "",
               },
@@ -397,13 +403,32 @@ export async function POST(req, res) {
               },
             });
 
-            if (
-              updatedProduct.totalpacket <= 0 ||
-              updatedProduct.quantity <= 0
-            ) {
-              await prisma.products.delete({
-                where: { id: product.id },
-              });
+            // if (
+            //   updatedProduct.totalpacket <= 0 ||
+            //   updatedProduct.quantity <= 0
+            // ) {
+            //   await prisma.products.delete({
+            //     where: { id: product.id },
+            //   });
+            // }
+
+            // step 4 Check if both quantity and totalpacket are 0
+            if (updatedProduct.category !== "FEED") {
+              if (updatedProduct.quantity <= 0) {
+                await prisma.products.delete({
+                  where: {
+                    id: parseInt(product.id),
+                  },
+                });
+              }
+            } else {
+              if (updatedProduct.totalpacket <= 0) {
+                await prisma.products.delete({
+                  where: {
+                    id: parseInt(product.id),
+                  },
+                });
+              }
             }
 
             // Create due list if paymentStatus is "due"
@@ -433,7 +458,7 @@ export async function POST(req, res) {
     // Return all created sales as response
     return NextResponse.json({ status: "ok", data: results });
   } catch (error) {
-    console.error( error.message);
+    console.error(error.message);
     return NextResponse.json({ error: error.message });
   }
 }

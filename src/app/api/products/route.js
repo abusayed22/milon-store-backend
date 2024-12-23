@@ -19,6 +19,9 @@ export async function GET(req, res) {
 }
 
 
+
+
+
 // product add 
 export async function POST(req, res) {
   const { name, category,subCategory, perPackte, totalpackte, quantity, unitPrice, note } = await req.json();
