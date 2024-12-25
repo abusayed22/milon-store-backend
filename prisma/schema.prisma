@@ -28,6 +28,7 @@ model products {
   created_at  DateTime     @default(now()) @db.Timestamp(0)
   updated_at  DateTime     @default(now()) @updatedAt @db.Timestamp(0)
   unitPrice   Int
+  stock       Boolean      @default(true)
 }
 
 model productTransferList {
@@ -64,6 +65,7 @@ model sales {
   quantity        Float
   perPacket       Float?
   totalpacket     Float?
+  customer_id     Int
   paymentStatus   paymentStatus
   note            String        @db.LongText
   created_at      DateTime      @default(now()) @db.Timestamp(0)
@@ -71,7 +73,6 @@ model sales {
   discount        Int
   discountedPrice Float
   totalPrice      Float
-  customer_id     Int
   customers       customers     @relation(fields: [customer_id], references: [id])
 
   @@index([customer_id], map: "sales_customer_id_fkey")

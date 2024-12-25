@@ -11,6 +11,7 @@ export async function GET(req) {
 
   // Construct the `where` condition dynamically, only including fields if they are provided
   const whereCondition = {
+    stock:true,
     ...(category && { category }), // Include `category` only if it has a valid value
     ...(subCategory && { subCategory }), // Include `subCategory` only if it has a valid value
   };

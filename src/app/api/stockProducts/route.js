@@ -15,9 +15,10 @@ export const GET = async (req) => {
         // }
 
         const productsByCategory = await prisma.products.findMany({
-            // where: {
-            //     category: category
-            // },
+            where: {
+                // category: category
+                stock:true
+            },
             select:{
                 id: true,
                 name:true,

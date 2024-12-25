@@ -20,7 +20,6 @@ export async function GET(req, res) {
 // create trasnfer in trasnfer list by product and customer ,
 export async function POST(req, res) {
   try {
-
     const reqBody = await req.json();
     const {
       selectedProduct,
@@ -33,7 +32,6 @@ export async function POST(req, res) {
       note,
     } = reqBody;
 
-    
     // const selected = JSON.parse(selectedProduct);
 
     // if sub category not have
@@ -46,7 +44,6 @@ export async function POST(req, res) {
     const product = await prisma.products.findFirst({
       where: { id: Number(selectedProduct?.id) },
     });
-    
 
     if (!product) {
       console.error("Product not found");
@@ -65,7 +62,6 @@ export async function POST(req, res) {
         { status: 400 }
       );
     }
-    
 
     // Step 3: Create sale and update product quantity in a transaction
     const transfer = await prisma.$transaction(async (prisma) => {
@@ -82,19 +78,19 @@ export async function POST(req, res) {
       const newTransfer = await prisma.productTransferList.create({
         data: transferData,
       });
-// console.log(transferData)
+      // console.log(transferData)
       // Update the product's quantity
       let updatedProduct;
-      if(category !== "FEED") {
+      if (category !== "FEED") {
         updatedProduct = await prisma.products.update({
           where: { id: product.id },
           data: {
             quantity: product.quantity - quantity,
             // totalpacket: product.totalpacket - totalpacket,
-          }, 
+          },
         });
         // updatedProduct = updateCalculationProduct;
-      }else {
+      } else {
         updatedProduct = await prisma.products.update({
           where: { id: product.id },
           data: {
@@ -104,27 +100,33 @@ export async function POST(req, res) {
         });
         // updatedProduct = updateCalculationProduct;
       }
-      
 
-      // step 4 Check if both quantity and totalpacket are 0
-      if(updatedProduct.category !== "FEED"){
+      // if total packet or quantity is 0 then is now avible for stock
+      if (updatedProduct.category !== "FEED") {
         if (updatedProduct.quantity <= 0) {
-          await prisma.products.delete({
+          // Set stock to false instead of deleting the product
+          await prisma.products.update({
             where: {
               id: parseInt(product.id),
             },
+            data: {
+              stock: false, // Set stock to false
+            },
           });
         }
-      } else{
+      } else {
         if (updatedProduct.totalpacket <= 0) {
-          await prisma.products.delete({
+          // Set stock to false instead of deleting the product
+          await prisma.products.update({
             where: {
               id: parseInt(product.id),
+            },
+            data: {
+              stock: false, // Set stock to false
             },
           });
         }
       }
-      
 
       return newTransfer;
     });

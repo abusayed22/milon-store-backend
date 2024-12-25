@@ -368,9 +368,11 @@ export async function POST(req, res) {
           console.error(
             `Insufficient product quantity for: ${selectedProduct.name}`
           );
-          throw new Error(
-            `Insufficient product quantity for: ${selectedProduct.name}`
-          );
+          // throw new Error(
+          //   `Insufficient product quantity for: ${selectedProduct.name}`
+          // );
+
+          return NextResponse.json({error: `Insufficient product quantity for: ${selectedProduct.name}`})
         }
 
         // Step 3: Create sale and update product quantity
@@ -403,30 +405,28 @@ export async function POST(req, res) {
               },
             });
 
-            // if (
-            //   updatedProduct.totalpacket <= 0 ||
-            //   updatedProduct.quantity <= 0
-            // ) {
-            //   await prisma.products.delete({
-            //     where: { id: product.id },
-            //   });
-            // }
-
-            // step 4 Check if both quantity and totalpacket are 0
+         
+            // if total packet or quantity is 0 then is now avible for stock
             if (updatedProduct.category !== "FEED") {
               if (updatedProduct.quantity <= 0) {
-                await prisma.products.delete({
+                await prisma.products.update({
                   where: {
                     id: parseInt(product.id),
                   },
+                  data:{
+                    stock:false
+                  }
                 });
               }
             } else {
               if (updatedProduct.totalpacket <= 0) {
-                await prisma.products.delete({
+                await prisma.products.update({
                   where: {
                     id: parseInt(product.id),
                   },
+                  data:{
+                    stock:false
+                  }
                 });
               }
             }

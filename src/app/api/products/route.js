@@ -6,7 +6,12 @@ const prisma = new PrismaClient();
 // get all products
 export async function GET(req, res) {
   try {
-    const products = await prisma.products.findMany();
+    const products = await prisma.products.findMany({
+      where:{
+        stock:true
+      }
+    });
+    console.log(products)
     
     return NextResponse.json({ status: "ok", data: products });
   } catch (error) {
@@ -37,6 +42,7 @@ export async function POST(req, res) {
         quantity: parseInt(quantity),
         unitPrice: parseFloat(unitPrice),
         note: note || "null",
+        stock: true,
       },
     });
     console.log(product)

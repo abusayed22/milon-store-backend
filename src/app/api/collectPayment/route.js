@@ -30,6 +30,9 @@ export async function GET(req, res) {
       },
       skip: (pageInt - 1) * pageSizeInt,
       take: pageSizeInt,
+      orderBy: {
+        created_at:'desc'
+      }
     });
 
     const countCollect = await prisma.collectPayment.count({
