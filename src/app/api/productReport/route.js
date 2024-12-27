@@ -22,6 +22,10 @@ export async function GET(req, res) {
     const url = new URL(req.url);
     const startDate = url.searchParams.get("startDate");
     const endDate = url.searchParams.get("endDate");
+    const current = url.searchParams.get("page");
+    const pageSize = url.searchParams.get("pageSize");
+    const page = Number(current);
+    const limit = Number(pageSize);
 
     const parseCompactDate = (compactDate) => {
       // console.log("Parsing compact date:", compactDate);
@@ -35,50 +39,107 @@ export async function GET(req, res) {
     if (startDate) dateFilter.gte = parseCompactDate(startDate);
     if (endDate) dateFilter.lte = parseCompactDate(endDate);
 
-    // Query products create within the date range
-    const products = await prisma.products.findMany({
+    // 1️⃣ Fetch Product History Data for Date Range
+    const productHistory = await prisma.productHistory.findMany({
       where: {
         created_at: dateFilter,
       },
-      select:{
-        name:true,
-        quantity:true,
-        category:true,
-        created_at:true,
-        totalpacket:true,
-        perPacket:true,
-        subCategory:true,
+      include: {
+        product: true,
       },
-      // orderBy:'desc'
+      orderBy: {
+        created_at: "desc",
+      },
     });
-    console.log(products);
 
-    // Aggregating the data
-    const aggregatedProducts = products.reduce((acc, product) => {
-      const productKey = `${product.name}-${product.category}`;
+    // Fetch Current Product Stock
+    const currentStock = await prisma.products.findMany({
+      where:{
+        stock:true
+      },
+      select: {
+        id: true,
+        name: true,
+        category: true,
+        subCategory: true,
+        quantity: true,
+        totalpacket: true,
+        unitPrice: true,
+        stock: true,
+      },
+    });
 
-      if (!acc[productKey]) {
-        acc[productKey] = {
-          productName: product.name,
-          category: product.category,
-          totalQty: 0,
-          dateRange: { start: startDate, end: endDate },
-        };
-      }
+    // calculate summary report
+    const totalproductsSummary = currentStock.map((product) => {
 
-      const quantity = product.category === 'feed' ? product.totalpacket : product.quantity;
-      acc[productKey].totalQty += quantity;
+      // Filter the history entries for this specific product
+      const historyEntriesForProduct = productHistory.filter((history) => {
+        return history.productId === product.id;
+      });
 
-      return acc;
-    }, {});
+      // Check if historyEntriesForProduct is empty
+      // console.log("History Entries for Product:", historyEntriesForProduct); // Debug
 
-    // Convert the aggregated data into an array
-    const reportData = Object.values(aggregatedProducts);
+      // Calculate the total packets added for this specific product
+      const totalAddPacket = historyEntriesForProduct.reduce(
+        (sum, entry) => {
+          const totalpacketValue = entry.totalpacket;
+      
+          // Check if totalpacket is a valid number
+          if (typeof totalpacketValue !== 'number' || isNaN(totalpacketValue)) {
+            console.log('Invalid totalpacket value:', totalpacketValue); // Debug invalid value
+            return sum; // Skip invalid values
+          }
+      
+          console.log('Adding Total Packets:', totalpacketValue); // Debug valid values
+          return sum + totalpacketValue;
+        },
+        0
+      );
 
-    // Log or return the data
-    console.log(reportData);
+      // Optional: Calculate other values like total quantity, total stock, etc.
+      const totalAddProductQty = historyEntriesForProduct.reduce(
+        (sum, entry) => sum + (entry.quantity || 0),
+        0
+      );
 
-    return NextResponse.json({ status: "ok", data: products });
+      const totalStockPacket = product.totalpacket || 0;
+      const totalStockQty = product.quantity || 0;
+
+      const totalSalePacket = totalAddPacket - totalStockPacket;
+      const totalSaleQty = totalAddProductQty - totalStockQty;
+
+      const valueStock =
+        (product.unitPrice || 0) *
+        (product.quantity || product.totalpacket || 0);
+
+      return {
+        productName: product.name,
+        category: product.category,
+        subCategory: product.subCategory || "null",
+        totalAddPacket,
+        totalStockPacket,
+        totalSalePacket,
+        totalAddProductQty,
+        totalStockQty,
+        totalSaleQty,
+        valueStock,
+      };
+    });
+
+    // console.log(productSummary);
+
+    const productSummary = totalproductsSummary.slice(
+      (page-1) * limit,
+      page * limit
+    )
+
+    const summaryRecords = totalproductsSummary.length
+    const totalPage = Math.ceil((summaryRecords / limit));
+    console.log(totalPage)
+
+    
+    return NextResponse.json({status: 'ok',data: productSummary,totalPage})
   } catch (error) {
     console.error("API error:", error.message);
     return NextResponse.json({

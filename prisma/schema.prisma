@@ -17,18 +17,33 @@ model subCategory {
 }
 
 model products {
-  id          Int          @id @unique @default(autoincrement())
+  id          Int              @id @unique @default(autoincrement())
   name        String
   category    categoryType
   subCategory String?
   perPacket   Float?
   totalpacket Float?
   quantity    Int
-  note        String       @db.LongText
-  created_at  DateTime     @default(now()) @db.Timestamp(0)
-  updated_at  DateTime     @default(now()) @updatedAt @db.Timestamp(0)
+  note        String           @db.LongText
+  created_at  DateTime         @default(now()) @db.Timestamp(0)
+  updated_at  DateTime         @default(now()) @updatedAt @db.Timestamp(0)
   unitPrice   Int
-  stock       Boolean      @default(true)
+  stock       Boolean          @default(true)
+  history     productHistory[]
+}
+
+model productHistory {
+  id          Int          @id @unique @default(autoincrement())
+  productId   Int
+  name        String
+  category    categoryType
+  subCategory String?
+  totalpacket Float?
+  quantity    Int
+  created_at  DateTime     @default(now()) @db.Timestamp(0)
+  product     products     @relation(fields: [productId], references: [id])
+
+  @@index([productId], map: "productHistory_productId_fkey")
 }
 
 model productTransferList {

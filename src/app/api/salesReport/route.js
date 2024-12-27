@@ -23,8 +23,8 @@ export async function GET(req, res) {
     const endDate = url.searchParams.get("endDate");
     const current = url.searchParams.get("current");
     const pageSize = url.searchParams.get("pageSize");
-    const page = Number(current)
-    const limit = Number(pageSize)
+    const page = Number(current);
+    const limit = Number(pageSize);
 
     const parseCompactDate = (compactDate) => {
       // console.log("Parsing compact date:", compactDate);
@@ -57,60 +57,58 @@ export async function GET(req, res) {
           },
         },
       },
-      skip: (page -1) * limit,
-      take: limit,
+      // skip: (page -1) * limit,
+      // take: limit,
       // orderBy: {
       //   created_at: 'desc',  // Orders by created_at in descending order
       // },
     });
 
-
-    // total records of sales summary
-    const totalRecords = await prisma.sales.count({
-      where: {
-        created_at: dateFilter,
-      },
-    });
-    const totalPages = Math.ceil(totalRecords / limit); 
-
     let totalSale = 0;
     let totalDue = 0;
     let totalCash = 0;
-    const customerSalesSummary = {};
 
-    // Calculate totals for all customers
-    salesData.forEach((sale) => {
-      totalSale += sale.discountedPrice;
-
+    // group data
+    const groupData = salesData.reduce((acc, sale) => {
       const customerId = sale.customer_id;
       const customerName = sale.customers.name
         ? sale.customers.name
         : "Unknown Customer";
 
-      // Initialize customer sales summary if not already present
-      if (!customerSalesSummary[customerId]) {
-        customerSalesSummary[customerId] = {
+      if (!acc[customerId]) {
+        acc[customerId] = {
+          customerId,
           customerName,
           totalSale: 0,
-          totalDue: 0,
           totalCash: 0,
+          totalDue: 0,
         };
       }
 
-      // Calculate based on Payment Status
+      acc[customerId].totalSale += sale.discountedPrice;
+      totalSale += sale.discountedPrice;
       if (sale.paymentStatus === "due") {
+        acc[customerId].totalDue += sale.discountedPrice;
         totalDue += sale.discountedPrice;
-        customerSalesSummary[customerId].totalDue += sale.discountedPrice;
       } else if (sale.paymentStatus === "paid") {
+        acc[customerId].totalCash += sale.discountedPrice;
         totalCash += sale.discountedPrice;
-        customerSalesSummary[customerId].totalCash += sale.discountedPrice;
       }
+      return acc;
+    }, {});
 
-      // Update total sales for the customer correctly
-      customerSalesSummary[customerId].totalSale += sale.discountedPrice;
-    });
+    // remove index to group data
+    const customerSalesSummary = Object.values(groupData);
 
-    
+    // pagination
+    const paginationSales = customerSalesSummary.slice(
+      (page - 1) * limit,
+      page * limit
+    );
+
+    const totalRecords = paginationSales.length; // Total number of grouped customers
+    const totalPages = Math.ceil(totalRecords / limit);
+
     return NextResponse.json({
       status: "ok",
       data: {

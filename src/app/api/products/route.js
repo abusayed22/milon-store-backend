@@ -11,7 +11,7 @@ export async function GET(req, res) {
         stock:true
       }
     });
-    console.log(products)
+
     
     return NextResponse.json({ status: "ok", data: products });
   } catch (error) {
@@ -43,6 +43,15 @@ export async function POST(req, res) {
         unitPrice: parseFloat(unitPrice),
         note: note || "null",
         stock: true,
+        history: {
+          create: {
+            name: name,
+            category: category || null,
+            subCategory: subCategory || null,
+            totalpacket: totalpackte ? parseFloat(totalpackte) : null, 
+            quantity:parseInt(quantity),
+          },
+        },
       },
     });
     console.log(product)
