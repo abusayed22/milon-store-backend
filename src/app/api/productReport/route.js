@@ -41,14 +41,15 @@ export async function GET(req, res) {
     const start = parseCompactDate(startDate);
     const end = parseCompactDate(endDate);
 
-    // Ensure end date includes the full day by setting time to 23:59:59.999
-    if (end) end.setHours(23, 59, 59, 999);
+    // ✅ Ensure end date includes the full day in UTC
+    if (end) {
+      end.setUTCHours(23, 59, 59, 999); // Ensures the end date covers the full day
+    }
 
     // ✅ Build Prisma Date Filter
     const dateFilter = {};
     if (start) dateFilter.gte = start;
     if (end) dateFilter.lte = end;
-
 
     // 1️⃣ Fetch Product History Data for Date Range
     const productHistory = await prisma.productHistory.findMany({

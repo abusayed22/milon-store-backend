@@ -53,7 +53,9 @@ export async function GET(req, res) {
     const end = parseCompactDate(endDate);
 
     // Ensure end date includes the full day by setting time to 23:59:59.999
-    if (end) end.setHours(23, 59, 59, 999);
+    if (end) {
+      end.setUTCHours(23, 59, 59, 999); // Ensures the end date covers the full day
+    }
 
     // ✅ Build Prisma Date Filter
     const dateFilter = {};
