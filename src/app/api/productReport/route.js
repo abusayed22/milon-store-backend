@@ -26,6 +26,7 @@ export async function GET(req, res) {
     const pageSize = url.searchParams.get("pageSize");
     const page = Number(current);
     const limit = Number(pageSize);
+    console.log(startDate)
 
     // ✅ Parse Compact Date (e.g., '241223' → '2024-12-23')
     const parseCompactDate = (compactDate) => {
@@ -39,7 +40,7 @@ export async function GET(req, res) {
       return new Date(Date.UTC(year, month, day));
     };
 
-    // ✅ Parse Dates
+    // Parse Dates
     const start = parseCompactDate(startDate);
     let end = parseCompactDate(endDate);
 
@@ -56,6 +57,8 @@ export async function GET(req, res) {
         )
       );
     }
+    console.log(start?.toISOString())
+    console.log(end?.toISOString())
 
     // 1️⃣ Fetch Product History Data for Date Range
     const productHistory = await prisma.productHistory.findMany({
@@ -72,8 +75,9 @@ export async function GET(req, res) {
         created_at: "desc",
       },
     });
-    // console.log(productHistory)
-    // console.log('Server Time Zone:', Intl.DateTimeFormat().resolvedOptions().timeZone);
+    console.log('First Record Date:', productHistory[0]?.created_at);
+   
+    
 
     // Fetch Current Product Stock
     const currentStock = await prisma.products.findMany({
