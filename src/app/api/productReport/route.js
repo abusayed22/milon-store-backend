@@ -34,27 +34,35 @@ export async function GET(req, res) {
       const month = parseInt(compactDate.slice(2, 4), 10) - 1; // '12' → 11 (zero-based)
       const day = parseInt(compactDate.slice(4, 6), 10); // '23' → 23
 
-      return new Date(year, month, day);
+      return new Date(Date.UTC(year, month, day));
     };
 
     // ✅ Parse Dates
     const start = parseCompactDate(startDate);
-    const end = parseCompactDate(endDate);
+    let end = parseCompactDate(endDate);
 
-    // ✅ Ensure end date includes the full day in UTC
+    // ✅ Manually Set End Time to End of Day (UTC)
     if (end) {
-      end.setUTCHours(23, 59, 59, 999); // Ensures the end date covers the full day
+      end = new Date(
+        Date.UTC(
+          end.getUTCFullYear(),
+          end.getUTCMonth(),
+          end.getUTCDate(),
+          23,
+          59,
+          59,
+          999
+        )
+      );
     }
-
-    // ✅ Build Prisma Date Filter
-    const dateFilter = {};
-    if (start) dateFilter.gte = start;
-    if (end) dateFilter.lte = end;
 
     // 1️⃣ Fetch Product History Data for Date Range
     const productHistory = await prisma.productHistory.findMany({
       where: {
-        created_at: dateFilter,
+        created_at: {
+          gte: start?.toISOString(),
+          lte: end?.toISOString(),
+        },
       },
       include: {
         product: true,
@@ -64,6 +72,7 @@ export async function GET(req, res) {
       },
     });
     // console.log(productHistory)
+    console.log('Server Time Zone:', Intl.DateTimeFormat().resolvedOptions().timeZone);
 
     // Fetch Current Product Stock
     const currentStock = await prisma.products.findMany({
