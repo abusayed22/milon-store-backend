@@ -18,37 +18,47 @@ export async function GET(req, res) {
       return new Response(null, { status: 204, headers });
     }
 
-   // get value from url
-   const url = new URL(req.url);
-   const startDate = url.searchParams.get("startDate");
-   const endDate = url.searchParams.get("endDate");
-   const current = url.searchParams.get("page");
-   const pageSize = url.searchParams.get("pageSize");
-   const page = Number(current);
-   const limit = Number(pageSize);
+    // get value from url
+    const url = new URL(req.url);
+    const startDate = url.searchParams.get("startDate");
+    const endDate = url.searchParams.get("endDate");
+    const current = url.searchParams.get("page");
+    const pageSize = url.searchParams.get("pageSize");
+    const page = current ? Number(current) : 1;
+    const limit = pageSize ? Number(pageSize) : 10;
 
-   // ✅ Parse Compact Date (e.g., '241223' → '2024-12-23')
-   const parseCompactDate = (compactDate) => {
-     if (!compactDate || compactDate.length !== 6) return null;
-     const year = 2000 + parseInt(compactDate.slice(0, 2), 10); // '24' → 2024
-     const month = parseInt(compactDate.slice(2, 4), 10) - 1; // '12' → 11 (zero-based)
-     const day = parseInt(compactDate.slice(4, 6), 10); // '23' → 23
+    // Ensure valid numbers
+    if (isNaN(page) || page < 1) {
+      console.warn(`Invalid page parameter: ${current}`);
+      throw new Error("Page must be a valid positive integer.");
+    }
 
-     return new Date(year, month, day);
-   };
+    if (isNaN(limit) || limit < 1) {
+      console.warn(`Invalid limit parameter: ${pageSize}`);
+      throw new Error("Page size must be a valid positive integer.");
+    }
 
-   // ✅ Parse Dates
-   const start = parseCompactDate(startDate);
-   const end = parseCompactDate(endDate);
+    // ✅ Parse Compact Date (e.g., '241223' → '2024-12-23')
+    const parseCompactDate = (compactDate) => {
+      if (!compactDate || compactDate.length !== 6) return null;
+      const year = 2000 + parseInt(compactDate.slice(0, 2), 10); // '24' → 2024
+      const month = parseInt(compactDate.slice(2, 4), 10) - 1; // '12' → 11 (zero-based)
+      const day = parseInt(compactDate.slice(4, 6), 10); // '23' → 23
 
-   // Ensure end date includes the full day by setting time to 23:59:59.999
-   if (end) end.setHours(23, 59, 59, 999);
+      return new Date(year, month, day);
+    };
 
-   // ✅ Build Prisma Date Filter
-   const dateFilter = {};
-   if (start) dateFilter.gte = start;
-   if (end) dateFilter.lte = end;
-   
+    // ✅ Parse Dates
+    const start = parseCompactDate(startDate);
+    const end = parseCompactDate(endDate);
+
+    // Ensure end date includes the full day by setting time to 23:59:59.999
+    if (end) end.setHours(23, 59, 59, 999);
+
+    // ✅ Build Prisma Date Filter
+    const dateFilter = {};
+    if (start) dateFilter.gte = start;
+    if (end) dateFilter.lte = end;
 
     // Query sales data based on the date range
     const salesData = await prisma.sales.findMany({
@@ -75,7 +85,7 @@ export async function GET(req, res) {
     let totalDue = 0;
     let totalCash = 0;
 
-    console.log(salesData);
+    // console.log(salesData);
 
     // group data
     const groupData = salesData.reduce((acc, sale) => {
@@ -108,16 +118,18 @@ export async function GET(req, res) {
 
     // remove index to group data
     const customerSalesSummary = Object.values(groupData);
+    // console.log(customerSalesSummary);
 
     // pagination
     const paginationSales = customerSalesSummary.slice(
       (page - 1) * limit,
       page * limit
     );
+    // console.log(page);
 
-    const totalRecords = customerSalesSummary?.length; // Total number of grouped customers
+    const totalRecords = paginationSales?.length; // Total number of grouped customers
     const totalPages = Math.ceil(totalRecords / limit);
-  
+    // console.log(totalPages)
 
     return NextResponse.json({
       status: "ok",
@@ -125,7 +137,7 @@ export async function GET(req, res) {
         totalSale,
         totalDue,
         totalCash,
-        customerSalesSummary,
+        paginationSales: customerSalesSummary,
         pagination: {
           page,
           totalPages,
