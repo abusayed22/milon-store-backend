@@ -39,11 +39,23 @@ export async function GET(req, res) {
     if (startDate) dateFilter.gte = parseCompactDate(startDate);
     if (endDate) dateFilter.lte = parseCompactDate(endDate);
 
+    // const dateFilters = {
+    //   startDate: new Date(startDate * 1000).toISOString(),
+    //   endDate: new Date(endDate * 1000).toISOString(),
+    // };
+
+
     // 1️⃣ Fetch Product History Data for Date Range
     const productHistory = await prisma.productHistory.findMany({
       where: {
         created_at: dateFilter,
       },
+      // where: {
+      //   created_at: {
+      //     gte: '2024-12-28',
+      //     lte: '2024-12-28'
+      //   },
+      // },
       include: {
         product: true,
       },
@@ -51,6 +63,7 @@ export async function GET(req, res) {
         created_at: "desc",
       },
     });
+    // console.log(productHistory)
 
     // Fetch Current Product Stock
     const currentStock = await prisma.products.findMany({
@@ -72,30 +85,42 @@ export async function GET(req, res) {
     // calculate summary report
     const totalproductsSummary = currentStock.map((product) => {
 
+      // console.log("his:",productHistory)
+
       // Filter the history entries for this specific product
       const historyEntriesForProduct = productHistory.filter((history) => {
         return history.productId === product.id;
       });
 
+
       // Check if historyEntriesForProduct is empty
       // console.log("History Entries for Product:", historyEntriesForProduct); // Debug
 
       // Calculate the total packets added for this specific product
-      const totalAddPacket = historyEntriesForProduct.reduce(
-        (sum, entry) => {
-          const totalpacketValue = entry.totalpacket;
-      
-          // Check if totalpacket is a valid number
-          if (typeof totalpacketValue !== 'number' || isNaN(totalpacketValue)) {
-            console.log('Invalid totalpacket value:', totalpacketValue); // Debug invalid value
-            return sum; // Skip invalid values
-          }
-      
-          console.log('Adding Total Packets:', totalpacketValue); // Debug valid values
-          return sum + totalpacketValue;
-        },
-        0
-      );
+        const totalAddPacket = historyEntriesForProduct.reduce(
+          (sum, entry) => {
+            const totalpacketValue = Number(entry.totalpacket);
+            const totalQuantityValue = Number(entry.quantity);
+        
+            // check feed and other 
+            if(product.category === "FEED") {
+              // Check if totalpacket is a valid number
+            if (typeof totalpacketValue !== 'number' || isNaN(totalpacketValue)) {
+              return sum; // Skip invalid values
+            }
+        
+            return sum + totalpacketValue;
+            } else {
+                // Check if quantity is a valid number
+            if (typeof totalQuantityValue !== 'number' || isNaN(totalQuantityValue)) {
+              return sum; // Skip invalid values
+            }
+            return sum + totalQuantityValue;
+            }
+          },
+          0
+        );
+        
 
       // Optional: Calculate other values like total quantity, total stock, etc.
       const totalAddProductQty = historyEntriesForProduct.reduce(
@@ -103,7 +128,14 @@ export async function GET(req, res) {
         0
       );
 
-      const totalStockPacket = product.totalpacket || 0;
+      // const totalStockPacket = product.totalpacket || 0;
+      let totalStockPacket ;
+      if(product.category === 'FEED') {
+        totalStockPacket = product.totalpacket || 0
+      }else{
+        totalStockPacket = product.quantity || 0
+      }
+      
       const totalStockQty = product.quantity || 0;
 
       const totalSalePacket = totalAddPacket - totalStockPacket;
@@ -127,7 +159,6 @@ export async function GET(req, res) {
       };
     });
 
-    // console.log(productSummary);
 
     const productSummary = totalproductsSummary.slice(
       (page-1) * limit,
@@ -136,7 +167,7 @@ export async function GET(req, res) {
 
     const summaryRecords = totalproductsSummary.length
     const totalPage = Math.ceil((summaryRecords / limit));
-    console.log(totalPage)
+   
 
     
     return NextResponse.json({status: 'ok',data: productSummary,totalPage})

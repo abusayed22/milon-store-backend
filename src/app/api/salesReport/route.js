@@ -37,12 +37,22 @@ export async function GET(req, res) {
     const dateFilter = {};
     if (startDate) dateFilter.gte = parseCompactDate(startDate);
     if (endDate) dateFilter.lte = parseCompactDate(endDate);
+    console.log(dateFilter)
+    // 2024-12-29T05:36:54.000Z
+    // 2024-12-28T18:00:00.000Z 
+   
 
     // Query sales data based on the date range
     const salesData = await prisma.sales.findMany({
       where: {
         created_at: dateFilter,
       },
+      // where:{
+      //   created_at:{
+      //     gte: sDate,
+      //     lte: eDate
+      //   }
+      // },
       select: {
         totalPrice: true,
         paymentStatus: true,
@@ -67,6 +77,8 @@ export async function GET(req, res) {
     let totalSale = 0;
     let totalDue = 0;
     let totalCash = 0;
+
+    console.log(salesData);
 
     // group data
     const groupData = salesData.reduce((acc, sale) => {
@@ -106,7 +118,7 @@ export async function GET(req, res) {
       page * limit
     );
 
-    const totalRecords = paginationSales.length; // Total number of grouped customers
+    const totalRecords = paginationSales?.length; // Total number of grouped customers
     const totalPages = Math.ceil(totalRecords / limit);
 
     return NextResponse.json({
