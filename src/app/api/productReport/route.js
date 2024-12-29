@@ -30,10 +30,12 @@ export async function GET(req, res) {
     // ✅ Parse Compact Date (e.g., '241223' → '2024-12-23')
     const parseCompactDate = (compactDate) => {
       if (!compactDate || compactDate.length !== 6) return null;
+
       const year = 2000 + parseInt(compactDate.slice(0, 2), 10); // '24' → 2024
       const month = parseInt(compactDate.slice(2, 4), 10) - 1; // '12' → 11 (zero-based)
-      const day = parseInt(compactDate.slice(4, 6), 10); // '23' → 23
+      const day = parseInt(compactDate.slice(4, 6), 10); // '28' → 28
 
+      // Start of the day (00:00:00.000 UTC)
       return new Date(Date.UTC(year, month, day));
     };
 
@@ -41,15 +43,26 @@ export async function GET(req, res) {
     const start = parseCompactDate(startDate);
     let end = parseCompactDate(endDate);
 
-    // ✅ Manually Set End Time to End of Day (UTC)
-    end.setUTCHours(23, 59, 59, 999);
+    if (end) {
+      end = new Date(
+        Date.UTC(
+          end.getUTCFullYear(),
+          end.getUTCMonth(),
+          end.getUTCDate(),
+          23,
+          59,
+          59,
+          999
+        )
+      );
+    }
 
     // 1️⃣ Fetch Product History Data for Date Range
     const productHistory = await prisma.productHistory.findMany({
       where: {
         created_at: {
-          gte: start || undefined,
-          lte: end || undefined,
+          gte: start?.toISOString(), // Start of day
+          lte: end?.toISOString(),
         },
       },
       include: {
