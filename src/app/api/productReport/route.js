@@ -27,22 +27,27 @@ export async function GET(req, res) {
     const page = Number(current);
     const limit = Number(pageSize);
 
+    // ✅ Parse Compact Date (e.g., '241223' → '2024-12-23')
     const parseCompactDate = (compactDate) => {
-      // console.log("Parsing compact date:", compactDate);
-      const year = parseInt(compactDate.slice(0, 2), 10) + 2000;
-      const month = parseInt(compactDate.slice(2, 4), 10) - 1;
-      const day = parseInt(compactDate.slice(4, 6), 10);
+      if (!compactDate || compactDate.length !== 6) return null;
+      const year = 2000 + parseInt(compactDate.slice(0, 2), 10); // '24' → 2024
+      const month = parseInt(compactDate.slice(2, 4), 10) - 1; // '12' → 11 (zero-based)
+      const day = parseInt(compactDate.slice(4, 6), 10); // '23' → 23
+
       return new Date(year, month, day);
     };
 
-    const dateFilter = {};
-    if (startDate) dateFilter.gte = parseCompactDate(startDate);
-    if (endDate) dateFilter.lte = parseCompactDate(endDate);
+    // ✅ Parse Dates
+    const start = parseCompactDate(startDate);
+    const end = parseCompactDate(endDate);
 
-    // const dateFilters = {
-    //   startDate: new Date(startDate * 1000).toISOString(),
-    //   endDate: new Date(endDate * 1000).toISOString(),
-    // };
+    // Ensure end date includes the full day by setting time to 23:59:59.999
+    if (end) end.setHours(23, 59, 59, 999);
+
+    // ✅ Build Prisma Date Filter
+    const dateFilter = {};
+    if (start) dateFilter.gte = start;
+    if (end) dateFilter.lte = end;
 
 
     // 1️⃣ Fetch Product History Data for Date Range
@@ -50,12 +55,6 @@ export async function GET(req, res) {
       where: {
         created_at: dateFilter,
       },
-      // where: {
-      //   created_at: {
-      //     gte: '2024-12-28',
-      //     lte: '2024-12-28'
-      //   },
-      // },
       include: {
         product: true,
       },
@@ -67,8 +66,8 @@ export async function GET(req, res) {
 
     // Fetch Current Product Stock
     const currentStock = await prisma.products.findMany({
-      where:{
-        stock:true
+      where: {
+        stock: true,
       },
       select: {
         id: true,
@@ -84,7 +83,6 @@ export async function GET(req, res) {
 
     // calculate summary report
     const totalproductsSummary = currentStock.map((product) => {
-
       // console.log("his:",productHistory)
 
       // Filter the history entries for this specific product
@@ -92,35 +90,33 @@ export async function GET(req, res) {
         return history.productId === product.id;
       });
 
-
       // Check if historyEntriesForProduct is empty
       // console.log("History Entries for Product:", historyEntriesForProduct); // Debug
 
       // Calculate the total packets added for this specific product
-        const totalAddPacket = historyEntriesForProduct.reduce(
-          (sum, entry) => {
-            const totalpacketValue = Number(entry.totalpacket);
-            const totalQuantityValue = Number(entry.quantity);
-        
-            // check feed and other 
-            if(product.category === "FEED") {
-              // Check if totalpacket is a valid number
-            if (typeof totalpacketValue !== 'number' || isNaN(totalpacketValue)) {
-              return sum; // Skip invalid values
-            }
-        
-            return sum + totalpacketValue;
-            } else {
-                // Check if quantity is a valid number
-            if (typeof totalQuantityValue !== 'number' || isNaN(totalQuantityValue)) {
-              return sum; // Skip invalid values
-            }
-            return sum + totalQuantityValue;
-            }
-          },
-          0
-        );
-        
+      const totalAddPacket = historyEntriesForProduct.reduce((sum, entry) => {
+        const totalpacketValue = Number(entry.totalpacket);
+        const totalQuantityValue = Number(entry.quantity);
+
+        // check feed and other
+        if (product.category === "FEED") {
+          // Check if totalpacket is a valid number
+          if (typeof totalpacketValue !== "number" || isNaN(totalpacketValue)) {
+            return sum; // Skip invalid values
+          }
+
+          return sum + totalpacketValue;
+        } else {
+          // Check if quantity is a valid number
+          if (
+            typeof totalQuantityValue !== "number" ||
+            isNaN(totalQuantityValue)
+          ) {
+            return sum; // Skip invalid values
+          }
+          return sum + totalQuantityValue;
+        }
+      }, 0);
 
       // Optional: Calculate other values like total quantity, total stock, etc.
       const totalAddProductQty = historyEntriesForProduct.reduce(
@@ -129,13 +125,13 @@ export async function GET(req, res) {
       );
 
       // const totalStockPacket = product.totalpacket || 0;
-      let totalStockPacket ;
-      if(product.category === 'FEED') {
-        totalStockPacket = product.totalpacket || 0
-      }else{
-        totalStockPacket = product.quantity || 0
+      let totalStockPacket;
+      if (product.category === "FEED") {
+        totalStockPacket = product.totalpacket || 0;
+      } else {
+        totalStockPacket = product.quantity || 0;
       }
-      
+
       const totalStockQty = product.quantity || 0;
 
       const totalSalePacket = totalAddPacket - totalStockPacket;
@@ -159,18 +155,15 @@ export async function GET(req, res) {
       };
     });
 
-
     const productSummary = totalproductsSummary.slice(
-      (page-1) * limit,
+      (page - 1) * limit,
       page * limit
-    )
+    );
 
-    const summaryRecords = totalproductsSummary.length
-    const totalPage = Math.ceil((summaryRecords / limit));
-   
+    const summaryRecords = totalproductsSummary.length;
+    const totalPage = Math.ceil(summaryRecords / limit);
 
-    
-    return NextResponse.json({status: 'ok',data: productSummary,totalPage})
+    return NextResponse.json({ status: "ok", data: productSummary, totalPage });
   } catch (error) {
     console.error("API error:", error.message);
     return NextResponse.json({

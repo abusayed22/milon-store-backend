@@ -18,28 +18,36 @@ export async function GET(req, res) {
       return new Response(null, { status: 204, headers });
     }
 
-    const url = new URL(req.url);
-    const startDate = url.searchParams.get("startDate");
-    const endDate = url.searchParams.get("endDate");
-    const current = url.searchParams.get("current");
-    const pageSize = url.searchParams.get("pageSize");
-    const page = Number(current);
-    const limit = Number(pageSize);
+   // get value from url
+   const url = new URL(req.url);
+   const startDate = url.searchParams.get("startDate");
+   const endDate = url.searchParams.get("endDate");
+   const current = url.searchParams.get("page");
+   const pageSize = url.searchParams.get("pageSize");
+   const page = Number(current);
+   const limit = Number(pageSize);
 
-    const parseCompactDate = (compactDate) => {
-      // console.log("Parsing compact date:", compactDate);
-      const year = parseInt(compactDate.slice(0, 2), 10) + 2000;
-      const month = parseInt(compactDate.slice(2, 4), 10) - 1;
-      const day = parseInt(compactDate.slice(4, 6), 10);
-      return new Date(year, month, day);
-    };
+   // ✅ Parse Compact Date (e.g., '241223' → '2024-12-23')
+   const parseCompactDate = (compactDate) => {
+     if (!compactDate || compactDate.length !== 6) return null;
+     const year = 2000 + parseInt(compactDate.slice(0, 2), 10); // '24' → 2024
+     const month = parseInt(compactDate.slice(2, 4), 10) - 1; // '12' → 11 (zero-based)
+     const day = parseInt(compactDate.slice(4, 6), 10); // '23' → 23
 
-    const dateFilter = {};
-    if (startDate) dateFilter.gte = parseCompactDate(startDate);
-    if (endDate) dateFilter.lte = parseCompactDate(endDate);
-    console.log(dateFilter)
-    // 2024-12-29T05:36:54.000Z
-    // 2024-12-28T18:00:00.000Z 
+     return new Date(year, month, day);
+   };
+
+   // ✅ Parse Dates
+   const start = parseCompactDate(startDate);
+   const end = parseCompactDate(endDate);
+
+   // Ensure end date includes the full day by setting time to 23:59:59.999
+   if (end) end.setHours(23, 59, 59, 999);
+
+   // ✅ Build Prisma Date Filter
+   const dateFilter = {};
+   if (start) dateFilter.gte = start;
+   if (end) dateFilter.lte = end;
    
 
     // Query sales data based on the date range
@@ -47,12 +55,6 @@ export async function GET(req, res) {
       where: {
         created_at: dateFilter,
       },
-      // where:{
-      //   created_at:{
-      //     gte: sDate,
-      //     lte: eDate
-      //   }
-      // },
       select: {
         totalPrice: true,
         paymentStatus: true,
@@ -67,11 +69,6 @@ export async function GET(req, res) {
           },
         },
       },
-      // skip: (page -1) * limit,
-      // take: limit,
-      // orderBy: {
-      //   created_at: 'desc',  // Orders by created_at in descending order
-      // },
     });
 
     let totalSale = 0;
@@ -118,8 +115,9 @@ export async function GET(req, res) {
       page * limit
     );
 
-    const totalRecords = paginationSales?.length; // Total number of grouped customers
+    const totalRecords = customerSalesSummary?.length; // Total number of grouped customers
     const totalPages = Math.ceil(totalRecords / limit);
+  
 
     return NextResponse.json({
       status: "ok",
