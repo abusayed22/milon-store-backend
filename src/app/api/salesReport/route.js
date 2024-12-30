@@ -41,31 +41,47 @@ export async function GET(req, res) {
     // ✅ Parse Compact Date (e.g., '241223' → '2024-12-23')
     const parseCompactDate = (compactDate) => {
       if (!compactDate || compactDate.length !== 6) return null;
+
       const year = 2000 + parseInt(compactDate.slice(0, 2), 10); // '24' → 2024
       const month = parseInt(compactDate.slice(2, 4), 10) - 1; // '12' → 11 (zero-based)
-      const day = parseInt(compactDate.slice(4, 6), 10); // '23' → 23
+      const day = parseInt(compactDate.slice(4, 6), 10); // '28' → 28
 
-      return new Date(year, month, day);
+      // Start of the day (00:00:00.000 UTC)
+      const localDate = new Date(year, month, day); // Local date
+      return new Date(
+        Date.UTC(
+          localDate.getFullYear(),
+          localDate.getMonth(),
+          localDate.getDate()
+        )
+      );
     };
 
-    // ✅ Parse Dates
+    // Parse Dates
     const start = parseCompactDate(startDate);
-    const end = parseCompactDate(endDate);
+    let end = parseCompactDate(endDate);
 
-    // Ensure end date includes the full day by setting time to 23:59:59.999
     if (end) {
-      end.setUTCHours(23, 59, 59, 999); // Ensures the end date covers the full day
+      end = new Date(
+        Date.UTC(
+          end.getUTCFullYear(),
+          end.getUTCMonth(),
+          end.getUTCDate(),
+          23,
+          59,
+          59,
+          999
+        )
+      );
     }
-
-    // ✅ Build Prisma Date Filter
-    const dateFilter = {};
-    if (start) dateFilter.gte = start;
-    if (end) dateFilter.lte = end;
 
     // Query sales data based on the date range
     const salesData = await prisma.sales.findMany({
       where: {
-        created_at: dateFilter,
+        created_at:{
+          gte: start?.toISOString(), // Start of day in UTC
+          lte: end?.toISOString(), // End of day in UTC
+        }
       },
       select: {
         totalPrice: true,

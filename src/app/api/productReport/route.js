@@ -64,14 +64,6 @@ export async function GET(req, res) {
       );
     }
 
-    // ✅ Log Dates for Debugging
-    console.log("Start Date (UTC):", start?.toISOString());
-    console.log("End Date (UTC):", end?.toISOString());
-    console.log(
-      "Server Time Zone:",
-      Intl.DateTimeFormat().resolvedOptions().timeZone
-    );
-    console.log("Server Current Time:", new Date().toISOString());
 
     // 1️⃣ Fetch Product History Data for Date Range
     const productHistory = await prisma.productHistory.findMany({
@@ -88,9 +80,7 @@ export async function GET(req, res) {
         created_at: "desc",
       },
     });
-    // ✅ Debug Query Results
-console.log("Filtered Records:", productHistory.length);
-console.log("First Record Date:", productHistory[0]?.created_at);
+    
 
     // Fetch Current Product Stock
     const currentStock = await prisma.products.findMany({
