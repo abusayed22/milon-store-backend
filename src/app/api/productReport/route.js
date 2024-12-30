@@ -57,8 +57,8 @@ export async function GET(req, res) {
       );
     }
     // console.log(new Date(start?.toISOString()))
-    console.log(start?.toISOString())
-    console.log(end?.toISOString())
+    console.log("start", start?.toISOString())
+    console.log("end" ,end?.toISOString())
 
     // 1️⃣ Fetch Product History Data for Date Range
     const productHistory = await prisma.productHistory.findMany({
