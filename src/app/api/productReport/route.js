@@ -36,7 +36,14 @@ export async function GET(req, res) {
       const day = parseInt(compactDate.slice(4, 6), 10); // '28' → 28
 
       // Start of the day (00:00:00.000 UTC)
-      return new Date(Date.UTC(year, month, day));
+      const localDate = new Date(year, month, day); // Local date
+      return new Date(
+        Date.UTC(
+          localDate.getFullYear(),
+          localDate.getMonth(),
+          localDate.getDate()
+        )
+      );
     };
 
     // Parse Dates
