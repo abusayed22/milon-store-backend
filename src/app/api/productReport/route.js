@@ -75,7 +75,7 @@ export async function GET(req, res) {
         created_at: "desc",
       },
     });
-    console.log('First Record Date:', productHistory[0]?.created_at);
+    // console.log('First Record Date:', productHistory[0]?.created_at);
    
     
 
