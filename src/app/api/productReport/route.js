@@ -68,6 +68,8 @@ export async function GET(req, res) {
     console.log("End Date (UTC):", end?.toISOString());
     console.log("Start Date (Local Adjusted):", startLocal?.toISOString());
     console.log("End Date (Local Adjusted):", endLocal?.toISOString());
+    console.log('Server Time Zone:', Intl.DateTimeFormat().resolvedOptions().timeZone);
+console.log('Server Current Time:', new Date().toISOString());
 
     // 1️⃣ Fetch Product History Data for Date Range
     const productHistory = await prisma.productHistory.findMany({
