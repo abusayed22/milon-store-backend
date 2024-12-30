@@ -57,26 +57,21 @@ export async function GET(req, res) {
       );
     }
 
-    // ✅ Adjust Dates to Match Local Time (if database is using local time)
-    const startLocal = new Date(
-      start.getTime() - start.getTimezoneOffset() * 60000
-    );
-    const endLocal = new Date(end.getTime() - end.getTimezoneOffset() * 60000);
-
-    // Debug Dates
+    // ✅ Log Dates for Debugging
     console.log("Start Date (UTC):", start?.toISOString());
     console.log("End Date (UTC):", end?.toISOString());
-    console.log("Start Date (Local Adjusted):", startLocal?.toISOString());
-    console.log("End Date (Local Adjusted):", endLocal?.toISOString());
-    console.log('Server Time Zone:', Intl.DateTimeFormat().resolvedOptions().timeZone);
-console.log('Server Current Time:', new Date().toISOString());
+    console.log(
+      "Server Time Zone:",
+      Intl.DateTimeFormat().resolvedOptions().timeZone
+    );
+    console.log("Server Current Time:", new Date().toISOString());
 
     // 1️⃣ Fetch Product History Data for Date Range
     const productHistory = await prisma.productHistory.findMany({
       where: {
         created_at: {
-          gte: startLocal?.toISOString(), // Adjusted Start
-          lte: endLocal?.toISOString(), // Adjusted End
+          gte: start?.toISOString(), // Start of day in UTC
+          lte: end?.toISOString(), // End of day in UTC
         },
       },
       include: {
@@ -86,7 +81,9 @@ console.log('Server Current Time:', new Date().toISOString());
         created_at: "desc",
       },
     });
-    // console.log('First Record Date:', productHistory[0]?.created_at);
+    // ✅ Debug Query Results
+console.log("Filtered Records:", productHistory.length);
+console.log("First Record Date:", productHistory[0]?.created_at);
 
     // Fetch Current Product Stock
     const currentStock = await prisma.products.findMany({
