@@ -56,16 +56,25 @@ export async function GET(req, res) {
         )
       );
     }
-    // console.log(new Date(start?.toISOString()))
-    console.log("start", start?.toISOString())
-    console.log("end" ,end?.toISOString())
+
+    // ✅ Adjust Dates to Match Local Time (if database is using local time)
+    const startLocal = new Date(
+      start.getTime() - start.getTimezoneOffset() * 60000
+    );
+    const endLocal = new Date(end.getTime() - end.getTimezoneOffset() * 60000);
+
+    // Debug Dates
+    console.log("Start Date (UTC):", start?.toISOString());
+    console.log("End Date (UTC):", end?.toISOString());
+    console.log("Start Date (Local Adjusted):", startLocal?.toISOString());
+    console.log("End Date (Local Adjusted):", endLocal?.toISOString());
 
     // 1️⃣ Fetch Product History Data for Date Range
     const productHistory = await prisma.productHistory.findMany({
       where: {
         created_at: {
-          gte: start?.toISOString(), // Start of day
-          lte: end?.toISOString(),
+          gte: startLocal?.toISOString(), // Adjusted Start
+          lte: endLocal?.toISOString(), // Adjusted End
         },
       },
       include: {
@@ -76,8 +85,6 @@ export async function GET(req, res) {
       },
     });
     // console.log('First Record Date:', productHistory[0]?.created_at);
-   
-    
 
     // Fetch Current Product Stock
     const currentStock = await prisma.products.findMany({
