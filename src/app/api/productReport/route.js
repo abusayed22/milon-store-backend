@@ -26,7 +26,6 @@ export async function GET(req, res) {
     const pageSize = url.searchParams.get("pageSize");
     const page = Number(current);
     const limit = Number(pageSize);
-    console.log(startDate)
 
     // ✅ Parse Compact Date (e.g., '241223' → '2024-12-23')
     const parseCompactDate = (compactDate) => {
@@ -57,15 +56,16 @@ export async function GET(req, res) {
         )
       );
     }
-    console.log(new Date(start?.toISOString()))
+    // console.log(new Date(start?.toISOString()))
+    console.log(start?.toISOString())
     console.log(end?.toISOString())
 
     // 1️⃣ Fetch Product History Data for Date Range
     const productHistory = await prisma.productHistory.findMany({
       where: {
         created_at: {
-          gte: new Date(start?.toISOString()), // Start of day
-          lte: new Date(end?.toISOString()),
+          gte: start?.toISOString(), // Start of day
+          lte: end?.toISOString(),
         },
       },
       include: {
