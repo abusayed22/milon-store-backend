@@ -48,7 +48,11 @@ export async function GET(req, res) {
 export async function PATCH(req, res) {
   try {
     // Use Prisma to retrieve all customers
-    const customers = await prisma.customers.findMany({});
+    const customers = await prisma.customers.findMany({
+      orderBy:{
+        created_at:'desc'
+      }
+    });
 
     return NextResponse.json({ status: "ok", data: customers });
   } catch (error) {
