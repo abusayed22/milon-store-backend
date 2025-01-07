@@ -17,6 +17,61 @@ export async function GET(req, res) {
   }
 }
 
+// Fetch transfer data by utc today
+export async function PATCH(req) {
+  try {
+    // get value from url
+    const url = new URL(req.url);
+    // const startDate = url.searchParams.get("startDate");
+    // const endDate = url.searchParams.get("endDate");
+    const current = url.searchParams.get("page");
+    const pageSize = url.searchParams.get("pageSize");
+    const page = current ? Number(current) : 1;
+    const limit = pageSize ? Number(pageSize) : 10;
+    const skip = (page - 1) * limit; 
+
+    // Get today's start and end times in UTC
+    const todayStart = new Date();
+    todayStart.setUTCHours(0, 0, 0, 0); // Start of the day in UTC
+    const todayEnd = new Date();
+    todayEnd.setUTCHours(23, 59, 59, 999); // End of the day in UTC
+
+    // Query records with today's UTC date
+    const products = await prisma.productTransferList.findMany({
+      where: {
+        created_at: {
+          gte: todayStart, // Greater than or equal to start of the day in UTC
+          lte: todayEnd, // Less than or equal to end of the day in UTC
+        },
+      },
+      skip,
+      take: limit
+    });
+console.log(products)
+
+    // Get total count for pagination metadata
+    const totalCount = await prisma.productTransferList.count({
+      where: {
+        created_at: {
+          gte: todayStart,
+          lte: todayEnd,
+        },
+      },
+    });
+
+    return NextResponse.json({ status: "ok", data: products,
+      pagination: {
+        // total: totalCount,
+        // page,
+        // limit,
+        totalPages: Math.ceil(totalCount / limit),
+      },});
+  } catch (error) {
+    console.error("Error fetching products for today in UTC:", error);
+    return NextResponse.json({ error: "Internal Server Error" });
+  }
+}
+
 // create trasnfer in trasnfer list by product and customer ,
 export async function POST(req, res) {
   try {

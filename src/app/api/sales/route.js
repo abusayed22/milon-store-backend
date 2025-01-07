@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { DateTime } from "@prisma/client";
+import { generateInvoice } from "@/utilities/generateInvoce";
 const prisma = new PrismaClient();
 
 // get all Sales List by category
@@ -319,7 +320,7 @@ export async function POST(req, res) {
     if (!Array.isArray(reqBody)) {
       return NextResponse.json({ error: "Expected an array of sales data" });
     }
-    // console.log(reqBody);
+    console.log(reqBody);
 
     const results = await Promise.all(
       reqBody.map(async (saleData) => {
@@ -332,16 +333,21 @@ export async function POST(req, res) {
           quantity,
           customer_id,
           paymentStatus,
+          cash,
+          due,
+          sepcialDiscount,
           totalPrice,
           note,
           discountedPrice,
           discount,
+          invoiceId,
         } = saleData;
 
         const whereCondition = {
           id: Number(selectedProduct?.id),
           name: selectedProduct?.name,
         };
+        console.log(invoiceId);
 
         // Step 1: Fetch product details
         const product = await prisma.products.findFirst({
@@ -356,7 +362,10 @@ export async function POST(req, res) {
         if (!product) {
           console.error(`Product not found: ${selectedProduct.name}`);
           // Optionally, return a more informative response or skip this sale
-          return NextResponse.json({ error: `Product not found: ${selectedProduct.name}` }, { status: 404 });
+          return NextResponse.json(
+            { error: `Product not found: ${selectedProduct.name}` },
+            { status: 404 }
+          );
         }
 
         // Step 2: Validate product quantity
@@ -372,86 +381,113 @@ export async function POST(req, res) {
           //   `Insufficient product quantity for: ${selectedProduct.name}`
           // );
 
-          return NextResponse.json({error: `Insufficient product quantity for: ${selectedProduct.name}`})
+          return NextResponse.json({
+            error: `Insufficient product quantity for: ${selectedProduct.name}`,
+          });
         }
 
         // Step 3: Create sale and update product quantity
-        // console.log(customer_id)
-        return await prisma
-          .$transaction(async (prisma) => {
-            const newSale = await prisma.sales.create({
-              data: {
-                productName: selectedProduct?.name,
-                category,
-                subCategory,
-                quantity: parseFloat(quantity) || null,
-                perPacket: parseFloat(perPacket) || null,
-                totalpacket: parseFloat(totalpacket) || null,
-                totalPrice: parseFloat(totalPrice),
-                discountedPrice: parseFloat(discountedPrice),
-                discount: parseInt(discount) || 0,
-                customer_id: parseInt(customer_id),
-                paymentStatus,
-                note: note || "",
-              },
-            });
+         await prisma.$transaction(async (prisma) => {
+          const newSale = await prisma.sales.create({
+            data: {
+              productName: selectedProduct?.name,
+              category,
+              subCategory,
+              quantity: parseFloat(quantity) || null,
+              perPacket: parseFloat(perPacket) || null,
+              totalpacket: parseFloat(totalpacket) || null,
+              totalPrice: parseFloat(totalPrice),
+              discountedPrice: parseFloat(discountedPrice),
+              discount: parseInt(discount) || 0,
+              customer_id: parseInt(customer_id),
+              paymentStatus: paymentStatus,
+              invoice: invoiceId,
+              note: note || "",
+            },
+          });
 
-            // Update the product's quantity
-            const updatedProduct = await prisma.products.update({
-              where: { id: product.id },
-              data: {
-                quantity: product.quantity - parseFloat(quantity),
-                totalpacket: product.totalpacket - parseFloat(totalpacket || 0),
-              },
-            });
+          // Update the product's quantity
+          const updatedProduct = await prisma.products.update({
+            where: { id: product.id },
+            data: {
+              quantity: product.quantity - parseFloat(quantity),
+              totalpacket: product.totalpacket - parseFloat(totalpacket || 0),
+            },
+          });
 
-         
-            // if total packet or quantity is 0 then is now avible for stock
-            if (updatedProduct.category !== "FEED") {
-              if (updatedProduct.quantity <= 0) {
-                await prisma.products.update({
-                  where: {
-                    id: parseInt(product.id),
-                  },
-                  data:{
-                    stock:false
-                  }
-                });
-              }
-            } else {
-              if (updatedProduct.totalpacket <= 0) {
-                await prisma.products.update({
-                  where: {
-                    id: parseInt(product.id),
-                  },
-                  data:{
-                    stock:false
-                  }
-                });
-              }
-            }
-
-            // Create due list if paymentStatus is "due"
-            const validCategories = ["FEED", "MEDICINE", "GROCERY"];
-            if (!validCategories.includes(category)) {
-              throw new Error(`Invalid category: ${category}`);
-            }
-
-            return newSale;
-          })
-          .then(async (newSale) => {
-            if (paymentStatus === "due") {
-              await prisma.dueList.create({
+          // if total packet or quantity is 0 then is now avible for stock
+          if (updatedProduct.category !== "FEED") {
+            if (updatedProduct.quantity <= 0) {
+              await prisma.products.update({
+                where: {
+                  id: parseInt(product.id),
+                },
                 data: {
-                  productCategory: category,
-                  subCategory: subCategory || null,
-                  customer_id: parseInt(customer_id) || null,
-                  amount: parseFloat(discountedPrice) || 0,
-                  note: note || "",
+                  stock: false,
                 },
               });
             }
+          } else {
+            if (updatedProduct.totalpacket <= 0) {
+              await prisma.products.update({
+                where: {
+                  id: parseInt(product.id),
+                },
+                data: {
+                  stock: false,
+                },
+              });
+            }
+          }
+
+          return newSale;
+        });
+
+        // create special discount
+        if (sepcialDiscount) {
+          await prisma.specialDiscount.create({
+            data: {
+              amount: parseFloat(sepcialDiscount),
+              invoice: invoiceId,
+            },
           });
+        }
+
+        // Create due list if paymentStatus is "due"}
+        if (paymentStatus === "due") {
+          await prisma.dueList.create({
+            data: {
+              productCategory: category,
+              subCategory: subCategory || null,
+              customer_id: parseInt(customer_id) || null,
+              amount: parseFloat(discountedPrice) || 0,
+              invoice: invoiceId,
+              note: note || "",
+            },
+          });
+        } else if (paymentStatus === "partial") {
+          // create collect payment
+          await prisma.collectPayment.create({
+            data: {
+              customer_id: parseInt(customer_id),
+              amount: parseFloat(cash),
+              invoice: invoiceId,
+              note: note || "",
+            },
+          });
+
+          // create due list
+          await prisma.dueList.create({
+            data: {
+              productCategory: category,
+              subCategory: subCategory || null,
+              customer_id: parseInt(customer_id),
+              amount: parseFloat(due),
+              invoice: invoiceId,
+              note: note || "",
+            },
+          });
+        }
       })
     );
 
