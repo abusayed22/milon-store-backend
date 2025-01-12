@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 const prisma = new PrismaClient();
 
 
-// get all customers
+// get customer
 export async function GET(req, res) {
     const { searchParams } = new URL(req.url);
     const userId = searchParams.get('userId');

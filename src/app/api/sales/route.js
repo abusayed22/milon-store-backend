@@ -320,7 +320,7 @@ export async function POST(req, res) {
     if (!Array.isArray(reqBody)) {
       return NextResponse.json({ error: "Expected an array of sales data" });
     }
-    console.log(reqBody);
+   
 
     const results = await Promise.all(
       reqBody.map(async (saleData) => {
@@ -347,7 +347,7 @@ export async function POST(req, res) {
           id: Number(selectedProduct?.id),
           name: selectedProduct?.name,
         };
-        console.log(invoiceId);
+    
 
         // Step 1: Fetch product details
         const product = await prisma.products.findFirst({
