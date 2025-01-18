@@ -31,30 +31,38 @@ export async function PATCH(req) {
     const skip = (page - 1) * limit; 
 
     // Get today's start and end times in UTC
-    const todayStart = new Date();
-    todayStart.setUTCHours(0, 0, 0, 0); // Start of the day in UTC
-    const todayEnd = new Date();
-    todayEnd.setUTCHours(23, 59, 59, 999); // End of the day in UTC
+    // Get the current UTC date
+    const now = new Date();
+    // Get the offset for Bangladesh Standard Time (UTC +6 hours)
+    const bangladeshOffset = 6 * 60; // 6 hours in minutes
+    // Set the start of the day (00:00:00 BST)
+    const startOfDayBST = new Date(now.getTime() + bangladeshOffset * 60000);
+    startOfDayBST.setHours(0, 0, 0, 0); // Set to 00:00:00 in Bangladesh Time
+
+    // Set the end of the day (23:59:59 BST)
+    const endOfDayBST = new Date(now.getTime() + bangladeshOffset * 60000);
+    endOfDayBST.setHours(23, 59, 59, 999); // Set to 23:59:59 in Bangladesh Time
+
+
 
     // Query records with today's UTC date
     const products = await prisma.productTransferList.findMany({
       where: {
         created_at: {
-          gte: todayStart, // Greater than or equal to start of the day in UTC
-          lte: todayEnd, // Less than or equal to end of the day in UTC
+          gte: startOfDayBST, // Greater than or equal to start of the day in UTC
+          lte: endOfDayBST, // Less than or equal to end of the day in UTC
         },
       },
       skip,
       take: limit
     });
-console.log(products)
 
     // Get total count for pagination metadata
     const totalCount = await prisma.productTransferList.count({
       where: {
         created_at: {
-          gte: todayStart,
-          lte: todayEnd,
+          gte: startOfDayBST, // Greater than or equal to start of the day in UTC
+          lte: endOfDayBST, // Less than or equal to end of the day in UTC
         },
       },
     });
