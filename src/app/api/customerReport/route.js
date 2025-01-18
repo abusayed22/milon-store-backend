@@ -42,6 +42,7 @@ const groupByDateData = async (sales) => {
         totalCollection: 0,
         totalDue: 0,
         totalCash: 0,
+        remainingBalance: 0,
       };
     }
     result[dateKey].totalCash += item.discountedPrice;
@@ -71,35 +72,32 @@ const groupByDateData = async (sales) => {
     result[dateKey].totalCollection = totalCollection;
     result[dateKey].totalDue = totalDue;
     result[dateKey].totalCash -= totalSpecialDiscount; // Subtract special discount from totalCash
+
+      
   }
 
   return result;
 };
 
-
-
 // Helper function to paginate the grouped data
 const paginateGroupedData = (groupedData, page, pageSize) => {
-    const groupedEntries = Object.entries(groupedData); // Convert the object to an array of entries
-    const totalRecords = groupedEntries.length; // Get the total number of grouped entries (dates)
-  
-    // Calculate the total number of pages
-    const totalPages = Math.ceil(totalRecords / pageSize);
-  
-    // Get the subset of grouped data for the current page
-    const paginatedGroupedData = groupedEntries.slice(
-      (page - 1) * pageSize, // Skip records for previous pages
-      page * pageSize // Take records for the current page
-    );
-  
-    // Convert the paginated grouped data back to an object
-    const paginatedData = Object.fromEntries(paginatedGroupedData);
-  
-    return { paginatedData, totalRecords, totalPages };
-  };
+  const groupedEntries = Object.entries(groupedData); // Convert the object to an array of entries
+  const totalRecords = groupedEntries.length; // Get the total number of grouped entries (dates)
 
+  // Calculate the total number of pages
+  const totalPages = Math.ceil(totalRecords / pageSize);
 
+  // Get the subset of grouped data for the current page
+  const paginatedGroupedData = groupedEntries.slice(
+    (page - 1) * pageSize, // Skip records for previous pages
+    page * pageSize // Take records for the current page
+  );
 
+  // Convert the paginated grouped data back to an object
+  const paginatedData = Object.fromEntries(paginatedGroupedData);
+
+  return { paginatedData, totalRecords, totalPages };
+};
 
 // API handler function
 export async function GET(req, res) {
@@ -131,11 +129,10 @@ export async function GET(req, res) {
 
     // Paginate the grouped data
     const { paginatedData, totalRecords, totalPages } = paginateGroupedData(
-        groupedData,
-        page,
-        pageSize
-      );
-
+      groupedData,
+      page,
+      pageSize
+    );
 
     return NextResponse.json({
       status: "ok",

@@ -30,7 +30,7 @@ export async function GET(req) {
         },
       });
 
-      const feedSalesAmount = feedSales._sum.discountedPrice || 0;
+      const feedSalesAmount = feedSales._sum.discountedPrice ;
       const feedSalesQuantity = feedSales._sum.quantity || 0;
 
       // Get today's total amount and quantity for "MEDICINE" category
@@ -98,7 +98,19 @@ export async function GET(req) {
           discountedPrice: true,
         },
       });
-      const totalSalesAmount = totalSales._sum.discountedPrice || 0;
+      
+      // Calculate total special Discount for today
+      const totalSpecialDiscount = await prisma.specialDiscount.aggregate({
+        where: {
+          created_at: {
+            gte: todayStart,
+          },
+        },
+        _sum: {
+          amount: true,
+        },
+      });
+      const totalSalesAmount = totalSales._sum.discountedPrice - totalSpecialDiscount._sum.amount;
       
 
       // Calculate total expenses for today
@@ -114,8 +126,7 @@ export async function GET(req) {
       });
       const totalExpensesAmount = totalExpenses._sum.amount || 0;
 
-      // Calculate available cash
-      const availableCash = totalSalesAmount - totalExpensesAmount;
+    
       // Total collect payment
       const totalCollectedPayment = await prisma.collectPayment.aggregate({
         where: {
@@ -128,7 +139,10 @@ export async function GET(req) {
         },
       });
       const totalCollectedAmount = totalCollectedPayment._sum.amount || 0;
-      // console.log(totalCollectedAmount)
+        
+      // Calculate available cash
+      const availableCash = (totalSalesAmount - totalExpensesAmount) + totalCollectedAmount;
+
       return NextResponse.json({
         status: "ok",
         availableCash,
@@ -154,107 +168,3 @@ export async function GET(req) {
     });
   }
 }
-
-
-// export async function GET(req) {
-//   const { searchParams } = await new URL(req.url);
-//   const type =  searchParams.get("type");
-//   console.log(type)
-
-//   try {
-//     const todayStart = new Date();
-//     todayStart.setHours(0, 0, 0, 0); // Set the start of the day (midnight)
-
-//     if (type === "sale_calcutlation") {
-//       // Fetching sales data by category for today (FEED, MEDICINE, GROCERY)
-//       console.log("sale_calcutlation")
-
-//       const feedSales = await prisma.sales.aggregate({
-//         where: {
-//           category: "FEED",
-//           created_at: { gte: todayStart },
-//         },
-//         _sum: { salesPrice: true, quantity: true },
-//       });
-
-//       const feedSalesAmount = feedSales._sum.salesPrice || 0;
-//       const feedSalesQuantity = feedSales._sum.quantity || 0;
-
-//       const medicineSales = await prisma.sales.aggregate({
-//         where: {
-//           category: "MEDICINE",
-//           created_at: { gte: todayStart },
-//         },
-//         _sum: { salesPrice: true, quantity: true },
-//       });
-
-//       const medicineSalesAmount = medicineSales._sum.salesPrice || 0;
-//       const medicineSalesQuantity = medicineSales._sum.quantity || 0;
-
-//       const grocerySales = await prisma.sales.aggregate({
-//         where: {
-//           category: "GROCERY",
-//           created_at: { gte: todayStart },
-//         },
-//         _sum: { salesPrice: true, quantity: true },
-//       });
-
-//       const grocerySalesAmount = grocerySales._sum.salesPrice || 0;
-//       const grocerySalesQuantity = grocerySales._sum.quantity || 0;
-
-//       return NextResponse.json({
-//         status: "ok",
-//         data: {
-//           feedSales: { totalAmount: feedSalesAmount, totalQuantity: feedSalesQuantity },
-//           medicineSales: { totalAmount: medicineSalesAmount, totalQuantity: medicineSalesQuantity },
-//           grocerySales: { totalAmount: grocerySalesAmount, totalQuantity: grocerySalesQuantity },
-//         },
-//       });
-
-//     } else if (type === "available_cash") {
-//       // Fetching sales, expenses, and collected payments for today
-//       console.log("available_cash")
-
-//       const totalSales = await prisma.sales.aggregate({
-//         where: { created_at: { gte: todayStart } },
-//         _sum: { salesPrice: true },
-//       });
-//       const totalSalesAmount = totalSales._sum.salesPrice || 0;
-
-//       const totalExpenses = await prisma.expenses.aggregate({
-//         where: { created_at: { gte: todayStart } },
-//         _sum: { amount: true },
-//       });
-//       const totalExpensesAmount = totalExpenses._sum.amount || 0;
-
-//       const availableCash = totalSalesAmount - totalExpensesAmount;
-
-//       const totalCollectedPayment = await prisma.collectPayment.aggregate({
-//         where: { created_at: { gte: todayStart } },
-//         _sum: { amount: true },
-//       });
-//       const totalCollectedAmount = totalCollectedPayment._sum.amount || 0;
-
-//       return NextResponse.json({
-//         status: "ok",
-//         availableCash,
-//         totalSalesAmount,
-//         totalExpensesAmount,
-//         totalCollectedAmount,
-//       });
-
-//     } else {
-//       return NextResponse.json({
-//         status: 400,
-//         error: "Invalid type parameter",
-//       });
-//     }
-
-//   } catch (error) {
-//     console.error("Failed to process request:", error.message);
-//     return NextResponse.json({
-//       status: 500,
-//       error: "Failed to get data for today",
-//     });
-//   }
-// }

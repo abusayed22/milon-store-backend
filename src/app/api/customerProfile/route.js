@@ -26,8 +26,24 @@ export async function GET(req, res) {
             discountedPrice: true
           }
         })
+
+        // get customer total collectPayment amount
+        const totalCustomerCollection = await prisma.collectPayment.aggregate({
+          where:{customer_id:Number(saleId)},
+          _sum: {
+            amount:true
+          }
+        })
+        // get customer total due amount
+        const totalCustomerDue = await prisma.dueList.aggregate({
+          where:{customer_id:Number(saleId)},
+          _sum: {
+            amount:true
+          }
+        })
         const totalSaleAmount = saleAmount._sum.discountedPrice || 0;
-        return NextResponse.json({ status: "ok", data: totalSaleAmount })
+        const remaingBalance = parseFloat(totalCustomerCollection._sum.amount) - parseFloat(totalCustomerDue._sum.amount);
+        return NextResponse.json({ status: "ok", data: {totalSaleAmount,remaingBalance} })
       }
       
     } catch (error) {

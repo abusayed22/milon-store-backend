@@ -1,7 +1,48 @@
-import { PrismaClient } from "@prisma/client";
+import { paymentStatus, PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 const prisma = new PrismaClient();
+
+// Utility function to calculate the total special discount for given invoices
+async function getTotalSpecialDiscount(invoices) {
+  // console.log(invoices)
+  const specialDiscountAmount = await prisma.specialDiscount.aggregate({
+    where: {
+      invoice: {
+        in: invoices,
+      },
+    },
+    _sum: {
+      amount: true,
+    },
+  });
+  return specialDiscountAmount._sum.amount || 0;
+}
+
+// utility function partial of report get
+const byPartialInvoices = async (invoiceModel, invoices) => {
+  if (!Array.isArray(invoices) || invoices.length === 0) {
+    // throw new Error("Invoices must be a non-empty array");
+  }
+
+  try {
+    const partialAmount = await prisma[invoiceModel].aggregate({
+      where: {
+        invoice: {
+          in: invoices,
+        },
+      },
+      _sum: {
+        amount: true,
+      },
+    });
+
+    return partialAmount._sum.amount || 0; // Return 0 if no amount is found
+  } catch (error) {
+    console.error("Error fetching partial invoices:", error);
+    throw new Error("Failed to fetch partial invoices");
+  }
+};
 
 // get all sub-category by category
 export async function GET(req, res) {
@@ -78,10 +119,10 @@ export async function GET(req, res) {
     // Query sales data based on the date range
     const salesData = await prisma.sales.findMany({
       where: {
-        created_at:{
+        created_at: {
           gte: start?.toISOString(), // Start of day in UTC
           lte: end?.toISOString(), // End of day in UTC
-        }
+        },
       },
       select: {
         totalPrice: true,
@@ -96,6 +137,7 @@ export async function GET(req, res) {
             name: true,
           },
         },
+        invoice: true,
       },
     });
 
@@ -103,14 +145,40 @@ export async function GET(req, res) {
     let totalDue = 0;
     let totalCash = 0;
 
-    // console.log(salesData);
+    // paid invoices
+    const paidInvoices = salesData
+      .filter((item) => item.paymentStatus === "paid")
+      .map((obj) => obj.invoice);
+    const paidSpecialDiscountAmount = await getTotalSpecialDiscount(
+      paidInvoices
+    );
+
+    // due invoices
+    const dueInvoices = salesData
+      .filter((item) => item.paymentStatus === "due")
+      .map((obj) => obj.invoice);
+    const dueSpecialDiscountAmount = await getTotalSpecialDiscount(dueInvoices);
+
+    // partial payment status invoices and amount
+    const partialInovices = salesData
+      .filter((item) => item.paymentStatus === "partial")
+      .map((obj) => obj.invoice);
+
+    // partial cash and due amount
+    const partialDueAmount = await byPartialInvoices(
+      "dueList",
+      partialInovices
+    );
+    const partialCashAmount = await byPartialInvoices(
+      "collectPayment",
+      partialInovices
+    );
 
     // group data
-    const groupData = salesData.reduce((acc, sale) => {
+    const groupData = await salesData.reduce(async (accPromise, sale) => {
+      const acc = await accPromise; // Ensure accumulator handles async/await
       const customerId = sale.customer_id;
-      const customerName = sale.customers.name
-        ? sale.customers.name
-        : "Unknown Customer";
+      const customerName = sale.customers?.name || "Unknown Customer";
 
       if (!acc[customerId]) {
         acc[customerId] = {
@@ -119,31 +187,74 @@ export async function GET(req, res) {
           totalSale: 0,
           totalCash: 0,
           totalDue: 0,
+          discountApplied: false, // initiate for prvent double counting
+          partialPaymentProcessed: false, // initiate for prvent double counting
         };
       }
 
+      // Customer invoices grouped by payment status
+      const customerSales = salesData.filter(
+        (item) => item.customer_id === customerId
+      );
+      const dueInvoices = customerSales
+        .filter((item) => item.paymentStatus === "due")
+        .map((obj) => obj.invoice);
+      const cashInvoices = customerSales
+        .filter((item) => item.paymentStatus === "paid")
+        .map((obj) => obj.invoice);
+
+      // Calculate special discounts for due and cash invoices
+      const dueTotalSpecialDiscountAmount =
+        dueInvoices.length > 0 ? await getTotalSpecialDiscount(dueInvoices) : 0; // Assign 0 if dueInvoices is empty
+
+      const cashTotalSpecialDiscountAmount =
+        cashInvoices.length > 0
+          ? await getTotalSpecialDiscount(cashInvoices)
+          : 0; // Assign 0 if cashInvoices is empty
+      // console.log("specialDiscount", cashTotalSpecialDiscountAmount)
+
+      // Update total sales, cash, and due
       acc[customerId].totalSale += sale.discountedPrice;
-      totalSale += sale.discountedPrice;
       if (sale.paymentStatus === "due") {
         acc[customerId].totalDue += sale.discountedPrice;
         totalDue += sale.discountedPrice;
       } else if (sale.paymentStatus === "paid") {
+        // console.log("Sale discountedPrice:", sale.discountedPrice);
         acc[customerId].totalCash += sale.discountedPrice;
         totalCash += sale.discountedPrice;
+      } else if (sale.paymentStatus === "partial") {
+        // Ensure partial due and cash amounts are calculated correctly and only once
+        // Avoid re-calculating these here
+        if (!acc[customerId].partialPaymentProcessed) {
+          acc[customerId].totalDue += partialDueAmount;
+          totalDue += partialDueAmount;
+          acc[customerId].totalCash += partialCashAmount;
+          totalCash += partialCashAmount;
+        }
+        acc[customerId].partialPaymentProcessed = true;
       }
+
+      // Apply special discounts to total due and total cash (only once per customer)
+      if (!acc[customerId].discountApplied) {
+        acc[customerId].totalDue -= dueTotalSpecialDiscountAmount;
+        acc[customerId].totalCash -= cashTotalSpecialDiscountAmount;
+        acc[customerId].discountApplied = true; // Mark discount as applied
+      }
+
       return acc;
-    }, {});
+    }, Promise.resolve({}));
+
+    const netCash = totalCash - paidSpecialDiscountAmount;
+    const netDue = totalDue - dueSpecialDiscountAmount;
 
     // remove index to group data
     const customerSalesSummary = Object.values(groupData);
-    // console.log(customerSalesSummary);
 
     // pagination
     const paginationSales = customerSalesSummary.slice(
       (page - 1) * limit,
       page * limit
     );
-    // console.log(page);
 
     const totalRecords = paginationSales?.length; // Total number of grouped customers
     const totalPages = Math.ceil(totalRecords / limit);
@@ -153,8 +264,8 @@ export async function GET(req, res) {
       status: "ok",
       data: {
         totalSale,
-        totalDue,
-        totalCash,
+        totalDue: netDue,
+        totalCash: netCash,
         paginationSales: customerSalesSummary,
         pagination: {
           page,

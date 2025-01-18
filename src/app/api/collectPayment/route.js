@@ -112,6 +112,7 @@ export async function POST(req, res) {
       data: {
         customer_id: parseInt(customer_id),
         amount: parseFloat(amount),
+        invoice: "null",
         note: note || "",
       },
       include: {

@@ -115,7 +115,7 @@ model collectPayment {
   id           Int       @id @unique @default(autoincrement())
   customer_id  Int
   amount       Float
-  invoice         String
+  invoice      String?
   note         String    @db.LongText
   created_at   DateTime  @default(now()) @db.Timestamp(0)
   updated_at   DateTime  @default(now()) @updatedAt @db.Timestamp(0)

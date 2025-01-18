@@ -63,20 +63,6 @@ export async function GET(req, res) {
           lt: new Date(parsedDate.getTime() + 24 * 60 * 60 * 1000), // To fetch data for the whole day
         },
       },
-      // select: {
-      //   totalPrice: true,
-      //   paymentStatus: true,
-      //   discount: true,
-      //   discountedPrice: true,
-      //   created_at: true,
-      //   customer_id: true,
-      //   customers: {
-      //     select: {
-      //       id: true,
-      //       name: true,
-      //     },
-      //   },
-      // },
     });
 
     // Paginate the results
