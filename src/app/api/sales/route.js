@@ -63,38 +63,35 @@ export async function GET(req, res) {
       });
     }
 
-   // Get the current date in UTC
-const now = new Date(2025, 0, 17);
+    // Get the current UTC date
+    const now = new Date();
 
-// Set the start of the day (00:00:00 UTC)
-const startOfDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0));
+    // Get the offset for Bangladesh Standard Time (UTC +6 hours)
+    const bangladeshOffset = 6 * 60; // 6 hours in minutes
 
-// Set the end of the day (23:59:59 UTC)
-const endOfDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59));
+    // Set the start of the day (00:00:00 BST)
+    const startOfDayBST = new Date(now.getTime() + bangladeshOffset * 60000);
+    startOfDayBST.setHours(0, 0, 0, 0); // Set to 00:00:00 in Bangladesh Time
 
-// Convert to ISO strings for comparison with Prisma (Optional, but it's often a good practice)
-const startOfDayISO = startOfDay.toISOString();
-const endOfDayISO = endOfDay.toISOString();
-    // console.log(test)
+    // Set the end of the day (23:59:59 BST)
+    const endOfDayBST = new Date(now.getTime() + bangladeshOffset * 60000);
+    endOfDayBST.setHours(23, 59, 59, 999); // Set to 23:59:59 in Bangladesh Time
 
     // ----------today total calculation ----------
 
     // ----------- today total calculation with group by customer & Pagination TODO: ------
     const salesData = await prisma.sales.findMany({
       where: {
-        // created_at: {
-        //   gte: today, // Only today's sales
-        // },
         created_at: {
-          gte:startOfDayISO, // Start of day in UTC
-          lte: endOfDayISO, // End of day in UTC
+          gte: startOfDayBST, // Start of day in UTC
+          lte: endOfDayBST, // End of day in UTC
         },
       },
       select: {
         customer_id: true,
         discountedPrice: true,
         paymentStatus: true,
-        created_at:true,
+        created_at: true,
         customers: {
           select: {
             name: true,
@@ -103,7 +100,6 @@ const endOfDayISO = endOfDay.toISOString();
         invoice: true,
       },
     });
-  
 
     // Query to get total sales, total due, and total cash for today
     const totalSalesCalculation = await prisma.sales.aggregate({
@@ -112,68 +108,43 @@ const endOfDayISO = endOfDay.toISOString();
       },
       where: {
         created_at: {
-          gte:startOfDayISO, // Start of day in UTC
-          lte: endOfDayISO, // End of day in UTC
+          gte: startOfDayBST, // Start of day in UTC
+          lte: endOfDayBST, // End of day in UTC
         },
       },
     });
-    
 
     // Calculate today totals for sales, due, and cash
     let todayTotalSalesPrice = totalSalesCalculation._sum.discountedPrice || 0;
     let todayTotalDueAmount = 0;
     let todayTotalCashAmount = 0;
-   
-
-    // paid invoices
-    const paidInvoices = salesData
-      .filter((item) => item.paymentStatus === "paid")
-      .map((obj) => obj.invoice);
-    const paidSpecialDiscountAmount = await getTotalSpecialDiscount(
-      paidInvoices
-    );
-
-    // due invoices
-    const dueInvoices = salesData
-      .filter((item) => item.paymentStatus === "due")
-      .map((obj) => obj.invoice);
-    const dueSpecialDiscountAmount = await getTotalSpecialDiscount(dueInvoices);
 
     // partial payment status invoices and amount
-    const partialInovices = salesData.filter((item) => item.paymentStatus === "partial").map((obj) => obj.invoice);
-console.log(partialInovices)
-// console.log(salesData)
-   
+    const partialInovices = salesData
+      .filter((item) => item.paymentStatus === "partial")
+      .map((obj) => obj.invoice);
+
     // partial cash and due amount
-    const partialDueAmount = await byPartialInvoices("dueList",partialInovices);
-    const partialCashAmount = await byPartialInvoices("collectPayment",partialInovices);
-    console.log("due",partialDueAmount)
-    console.log("cash",partialCashAmount)
-  
-    const customerInvoices = salesData.map((obj) => obj.invoice);
-    // console.log(customerInvoices)
-    const specialDiscount = await prisma.specialDiscount.aggregate({
-      where: {
-        invoice: {
-          in: customerInvoices,
-        },
-      },
-      _sum: {
-        amount: true,
-      },
-    });
-    // console.log(specialDiscount._sum.amount)
+    const partialDueAmount = await byPartialInvoices(
+      "dueList",
+      partialInovices
+    );
+    const partialCashAmount = await byPartialInvoices(
+      "collectPayment",
+      partialInovices
+    );
 
     // Count the total number of sales for pagination
     const totalSalesCount = await prisma.sales.count({
       where: {
         created_at: {
-          gte:startOfDayISO, // Start of day in UTC
-          lte: endOfDayISO, // End of day in UTC
+          gte: startOfDayBST, // Start of day in UTC
+          lte: endOfDayBST, // End of day in UTC
         },
       },
     });
 
+    // customer group data
     const groupData = await salesData.reduce(async (accPromise, sale) => {
       const acc = await accPromise; // Ensure accumulator handles async/await
       const customerId = sale.customer_id;
@@ -192,55 +163,65 @@ console.log(partialInovices)
       }
 
       // Customer invoices grouped by payment status
-      const customerSales = salesData.filter((item) => item.customer_id === customerId);
-      const dueInvoices = customerSales.filter((item) => item.paymentStatus === "due").map((obj) => obj.invoice);
-      const cashInvoices = customerSales.filter((item) => item.paymentStatus === "paid").map((obj) => obj.invoice);
+      const customerSales = salesData.filter(
+        (item) => item.customer_id === customerId
+      );
+      const dueInvoices = customerSales
+        .filter((item) => item.paymentStatus === "due")
+        .map((obj) => obj.invoice);
+      const cashInvoices = customerSales
+        .filter((item) => item.paymentStatus === "paid")
+        .map((obj) => obj.invoice);
 
       // Calculate special discounts for due and cash invoices
-      const dueTotalSpecialDiscountAmount = dueInvoices.length > 0 ? await getTotalSpecialDiscount(dueInvoices) : 0; // Assign 0 if dueInvoices is empty
-      const cashTotalSpecialDiscountAmount =cashInvoices.length > 0 ? await getTotalSpecialDiscount(cashInvoices): 0; // Assign 0 if cashInvoices is empty
+      const dueTotalSpecialDiscountAmount =
+        dueInvoices.length > 0 ? await getTotalSpecialDiscount(dueInvoices) : 0; // Assign 0 if dueInvoices is empty
+      const cashTotalSpecialDiscountAmount =
+        cashInvoices.length > 0
+          ? await getTotalSpecialDiscount(cashInvoices)
+          : 0; // Assign 0 if cashInvoices is empty
 
-    
+      // customer special discount
+      const customerInvoices = customerSales.map((obj) => obj.invoice);
+      const customerSpecialDiscount =
+        customerSales.length > 0
+          ? await getTotalSpecialDiscount(customerInvoices)
+          : 0;
+
       // Update total sales, cash, and due
       acc[customerId].totalSale += sale.discountedPrice;
       if (sale.paymentStatus === "due") {
-        console.log("due",sale.discountedPrice)
         acc[customerId].totalDue += sale.discountedPrice;
         todayTotalDueAmount += sale.discountedPrice;
       } else if (sale.paymentStatus === "paid") {
-        console.log("cash",sale.discountedPrice)
-        // console.log(sale.discountedPrice)
-        // console.log("Sale discountedPrice:", sale.discountedPrice);
+        //
         acc[customerId].totalCash += sale.discountedPrice;
         todayTotalCashAmount += sale.discountedPrice;
       } else if (sale.paymentStatus === "partial") {
         // Ensure partial due and cash amounts are calculated correctly and only once
         // Avoid re-calculating these here
-        // console.log("Partial payment amounts:", { partialDueAmount, partialCashAmount });
         if (!acc[customerId].partialPaymentProcessed) {
-          acc[customerId].totalDue += partialDueAmount ||0;
-          todayTotalDueAmount += partialDueAmount ||0;
-          acc[customerId].totalCash += partialCashAmount ||0;
-          todayTotalCashAmount += partialCashAmount ||0;
+          acc[customerId].totalDue += partialDueAmount || 0;
+          todayTotalDueAmount += partialDueAmount || 0;
+          acc[customerId].totalCash += partialCashAmount || 0;
+          todayTotalCashAmount += partialCashAmount || 0;
         }
         acc[customerId].partialPaymentProcessed = true;
       }
 
       // Apply special discounts to total due and total cash (only once per customer)
+      // Avoid re-calculating these here
       if (!acc[customerId].discountApplied) {
-        acc[customerId].totalDue -= dueTotalSpecialDiscountAmount ||0;
-        acc[customerId].totalCash -= cashTotalSpecialDiscountAmount ||0;
+        acc[customerId].totalSale -= customerSpecialDiscount;
+        acc[customerId].totalDue -= dueTotalSpecialDiscountAmount || 0;
+        acc[customerId].totalCash -= cashTotalSpecialDiscountAmount || 0;
         acc[customerId].discountApplied = true; // Mark discount as applied
       }
-      
+
       return acc;
     }, Promise.resolve({}));
 
-    // console.log("cash",todayTotalCashAmount)
-    // TODO: total calculation pore korbo
-
     const todaySales = Object.values(groupData);
-  
 
     const paginatedSales = todaySales.slice(
       (pageInt - 1) * pageSizeInt,
@@ -249,20 +230,14 @@ console.log(partialInovices)
     const totalRecords = todaySales.length; // Total number of grouped customers
     const totalPages = Math.ceil(totalRecords / pageSizeInt);
 
-    // console.log(todayTotalCashAmount)
-    // console.log(specialDiscount._sum.amount)
-    // total cash - special Discount
-    const netTotalCash = todayTotalCashAmount - specialDiscount._sum.amount;
-
-
     return NextResponse.json({
       status: "ok",
       data: paginatedSales,
       todayTotals: {
         todayTotalSalesPrice,
         todayTotalDueAmount,
-        todayTotalCashAmount: netTotalCash,
-        today:startOfDayISO,
+        todayTotalCashAmount,
+        today: startOfDayBST,
       },
       pagination: {
         currentPage: pageInt,
@@ -292,15 +267,25 @@ export async function PATCH(req, res) {
   const pageSizeInt = parseInt(pageSize);
 
   try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Get the current UTC date
+    const now = new Date();
+    // Get the offset for Bangladesh Standard Time (UTC +6 hours)
+    const bangladeshOffset = 6 * 60; // 6 hours in minutes
+    // Set the start of the day (00:00:00 BST)
+    const startOfDayBST = new Date(now.getTime() + bangladeshOffset * 60000);
+    startOfDayBST.setHours(0, 0, 0, 0); // Set to 00:00:00 in Bangladesh Time
+
+    // Set the end of the day (23:59:59 BST)
+    const endOfDayBST = new Date(now.getTime() + bangladeshOffset * 60000);
+    endOfDayBST.setHours(23, 59, 59, 999); // Set to 23:59:59 in Bangladesh Time
 
     if (status == "today") {
       const sales = await prisma.sales.findMany({
         where: {
           customer_id: userid,
           created_at: {
-            gte: today,
+            gte: startOfDayBST,
+            lte: endOfDayBST,
           },
         },
         orderBy: {
@@ -313,12 +298,14 @@ export async function PATCH(req, res) {
       let totalSales = 0;
       let totalDue = 0;
       let totalCash = 0;
+      let partialPaymentProcessed = false;
 
       const salesData = await prisma.sales.findMany({
         where: {
           customer_id: userid,
           created_at: {
-            gte: today,
+            gte: startOfDayBST,
+            lte: endOfDayBST,
           },
         },
         orderBy: {
@@ -326,23 +313,51 @@ export async function PATCH(req, res) {
         },
       });
 
+      // partial invoices
+      const partialInovices = salesData
+        .filter((obj) => obj.paymentStatus === "partial")
+        .map((obj) => obj.invoice);
+      // This customer invoice for more calculation
+      const customerInvoices = sales.map((obj) => obj.invoice);
+      // This customer total special Discount
+      const totalSpecialDiscount = await getTotalSpecialDiscount(
+        customerInvoices
+      );
+      // partial cash and due amount
+      const partialDueAmount = await byPartialInvoices(
+        "dueList",
+        partialInovices
+      );
+      const partialCashAmount = await byPartialInvoices(
+        "collectPayment",
+        partialInovices
+      );
+
       // total page calculation
       const totalCount = await prisma.sales.count({
         where: {
           customer_id: userid,
           created_at: {
-            gte: today,
+            gte: startOfDayBST,
+            lte: endOfDayBST,
           },
         },
       });
       const totalPage = Math.ceil(totalCount / pageSizeInt);
 
       salesData.forEach((s) => {
+        console.log(s);
         totalSales += s.discountedPrice || 0;
         if (s.paymentStatus === "due") {
           totalDue += s.discountedPrice || 0;
         } else if (s.paymentStatus === "paid") {
           totalCash += s.discountedPrice || 0;
+        } else if (s.paymentStatus === "partial") {
+          if (!partialPaymentProcessed) {
+            totalDue += partialDueAmount || 0;
+            totalCash += partialCashAmount || 0;
+          }
+          partialPaymentProcessed = true;
         }
       });
 
@@ -350,9 +365,10 @@ export async function PATCH(req, res) {
         status: "ok",
         data: sales,
         totals: {
-          totalSales,
+          totalSales: totalSales - totalSpecialDiscount,
           totalCash,
           totalDue,
+          today: startOfDayBST,
         },
         pagination: {
           currentPage: pageInt,
@@ -366,17 +382,12 @@ export async function PATCH(req, res) {
         orderBy: {
           created_at: "desc",
         },
-        // skip: (pageInt - 1) * pageSizeInt,
-        // take: pageSizeInt,
       });
 
       // total page calculation
       const totalCount = await prisma.sales.count({
         where: {
           customer_id: userid,
-          // created_at: {
-          //   gte: today,
-          // },
         },
       });
       const totalPage = Math.ceil(totalCount / pageSizeInt);
@@ -424,197 +435,6 @@ export async function OPTIONS(req, res) {
   }
 }
 
-// create sales in sales list by product and customer ,
-// export async function POST(req, res) {
-//   try {
-//     const reqBody = await req.json();
-
-//     // Validate input
-//     if (!Array.isArray(reqBody)) {
-//       return NextResponse.json({ error: "Expected an array of sales data" });
-//     }
-
-//     // Set to track processed invoice IDs TODO: more sales create one create specialDiscount
-//     // many times create breakdown
-//     const processedInvoiceIds = new Set();
-//     const processedCollectPayments = new Set();
-
-//     const results = await Promise.all(
-//       reqBody.map(async (saleData) => {
-//         const {
-//           selectedProduct,
-//           category,
-//           subCategory,
-//           perPacket,
-//           totalpacket,
-//           quantity,
-//           customer_id,
-//           paymentStatus,
-//           cash,
-//           due,
-//           sepcialDiscount,
-//           totalPrice,
-//           note,
-//           discountedPrice,
-//           discount,
-//           invoiceId,
-//         } = saleData;
-
-//         const whereCondition = {
-//           id: Number(selectedProduct?.id),
-//           name: selectedProduct?.name,
-//         };
-
-//         // Step 1: Fetch product details
-//         const product = await prisma.products.findFirst({
-//           where: {
-//             AND: [
-//               { id: Number(selectedProduct?.id) }, // Match by ID
-//               { name: selectedProduct?.name },
-//             ],
-//           },
-//         });
-
-//         if (!product) {
-//           console.error(`Product not found: ${selectedProduct.name}`);
-//           // Optionally, return a more informative response or skip this sale
-//           return NextResponse.json(
-//             { error: `Product not found: ${selectedProduct.name}` },
-//             { status: 404 }
-//           );
-//         }
-
-//         // Step 2: Validate product quantity
-//         const categoryCount = await prisma.products.count({
-//           where: whereCondition,
-//         });
-
-//         if (product.quantity < categoryCount) {
-//           console.error(
-//             `Insufficient product quantity for: ${selectedProduct.name}`
-//           );
-
-//           return NextResponse.json({
-//             error: `Insufficient product quantity for: ${selectedProduct.name}`,
-//           });
-//         }
-
-//         // Step 3: Create sale and update product quantity
-//         await prisma.$transaction(async (prisma) => {
-//           const newSale = await prisma.sales.create({
-//             data: {
-//               productName: selectedProduct?.name,
-//               category,
-//               subCategory,
-//               quantity: parseFloat(quantity) || null,
-//               perPacket: parseFloat(perPacket) || null,
-//               totalpacket: parseFloat(totalpacket) || null,
-//               totalPrice: parseFloat(totalPrice),
-//               discountedPrice: parseFloat(discountedPrice),
-//               discount: parseInt(discount) || 0,
-//               customer_id: parseInt(customer_id),
-//               paymentStatus: paymentStatus,
-//               invoice: invoiceId,
-//               note: note || "",
-//             },
-//           });
-
-//           // Update the product's quantity
-//           const updatedProduct = await prisma.products.update({
-//             where: { id: product.id },
-//             data: {
-//               quantity: product.quantity - parseFloat(quantity),
-//               totalpacket: product.totalpacket - parseFloat(totalpacket || 0),
-//             },
-//           });
-
-//           // if total packet or quantity is 0 then is now avible for stock
-//           if (updatedProduct.category !== "FEED") {
-//             if (updatedProduct.quantity <= 0) {
-//               await prisma.products.update({
-//                 where: {
-//                   id: parseInt(product.id),
-//                 },
-//                 data: {
-//                   stock: false,
-//                 },
-//               });
-//             }
-//           } else {
-//             if (updatedProduct.totalpacket <= 0) {
-//               await prisma.products.update({
-//                 where: {
-//                   id: parseInt(product.id),
-//                 },
-//                 data: {
-//                   stock: false,
-//                 },
-//               });
-//             }
-//           }
-
-//           // create special discount (once per invoice)
-//           if (sepcialDiscount && !processedInvoiceIds.has(invoiceId)) {
-//             await prisma.specialDiscount.create({
-//               data: {
-//                 amount: parseFloat(sepcialDiscount),
-//                 invoice: invoiceId,
-//               },
-//             });
-//             // Mark this invoice as processed
-//             processedInvoiceIds.add(invoiceId);
-//           }
-
-//           return newSale;
-//         });
-
-//         // Step 4: Handle payment-related actions
-//         if (!processedInvoiceIds.has(invoiceId)) {
-//           if (paymentStatus === "partial") {
-//             await prisma.collectPayment.create({
-//               data: {
-//                 customer_id: parseInt(customer_id),
-//                 amount: parseFloat(cash),
-//                 invoice: invoiceId,
-//                 note: note || "",
-//               },
-//             });
-//             await prisma.dueList.create({
-//               data: {
-//                 productCategory: category,
-//                 subCategory: subCategory || null,
-//                 customer_id: parseInt(customer_id),
-//                 amount: parseFloat(due),
-//                 invoice: invoiceId,
-//                 note: note || "",
-//               },
-//             });
-//           } else if (paymentStatus === "due") {
-//             await prisma.dueList.create({
-//               data: {
-//                 productCategory: category,
-//                 subCategory: subCategory || null,
-//                 customer_id: parseInt(customer_id),
-//                 amount: parseFloat(discountedPrice),
-//                 invoice: invoiceId,
-//                 note: note || "",
-//               },
-//             });
-//           }
-//           // Mark the invoice as processed for payment-related actions
-//           processedInvoiceIds.add(invoiceId);
-//         }
-
-//       })
-//     );
-
-//     // Return all created sales as response
-//     return NextResponse.json({ status: "ok", data: results });
-//   } catch (error) {
-//     console.error(error.message);
-//     return NextResponse.json({ error: error.message });
-//   }
-// }
 
 export async function POST(req, res) {
   try {
