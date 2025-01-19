@@ -7,9 +7,21 @@ export async function GET(req) {
   const { searchParams } = new URL(req.url);
   const type = searchParams.get("type");
 
+  // Get the current UTC date
+const now = new Date();
+// Get the offset for Bangladesh Standard Time (UTC +6 hours)
+const bangladeshOffset = 6 * 60; // 6 hours in minutes
+// Set the start of the day (00:00:00 BST)
+const startOfDayBST = new Date(now.getTime() + bangladeshOffset * 60000);
+startOfDayBST.setHours(0, 0, 0, 0); // Set to 00:00:00 in Bangladesh Time
+
+// Set the end of the day (23:59:59 BST)
+const endOfDayBST = new Date(now.getTime() + bangladeshOffset * 60000);
+endOfDayBST.setHours(23, 59, 59, 999); // Set to 23:59:59 in Bangladesh Time
+
   try {
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
+    // const todayStart = new Date();
+    // todayStart.setHours(0, 0, 0, 0);
 
     if (type === "sale_calcutlation") {
       // Define the start of today to filter records from midnight
@@ -21,7 +33,7 @@ export async function GET(req) {
         where: {
           category: "FEED",
           created_at: {
-            gte: todayStart, // Filter for records from the start of today
+            gte: startOfDayBST, // Filter for records from the start of today
           },
         },
         _sum: {
@@ -38,7 +50,7 @@ export async function GET(req) {
         where: {
           category: "MEDICINE",
           created_at: {
-            gte: todayStart, // Filter for records from the start of today
+            gte: startOfDayBST, // Filter for records from the start of today
           },
         },
         _sum: {
@@ -55,7 +67,7 @@ export async function GET(req) {
         where: {
           category: "GROCERY",
           created_at: {
-            gte: todayStart, // Filter for records from the start of today
+            gte: startOfDayBST, // Filter for records from the start of today
           },
         },
         _sum: {
@@ -91,7 +103,7 @@ export async function GET(req) {
       const totalSales = await prisma.sales.aggregate({
         where: {
           created_at: {
-            gte: todayStart,
+            gte: startOfDayBST,
           },
         },
         _sum: {
@@ -103,7 +115,7 @@ export async function GET(req) {
       const totalSpecialDiscount = await prisma.specialDiscount.aggregate({
         where: {
           created_at: {
-            gte: todayStart,
+            gte: startOfDayBST,
           },
         },
         _sum: {
@@ -117,7 +129,7 @@ export async function GET(req) {
       const totalExpenses = await prisma.expneses.aggregate({
         where: {
           created_at: {
-            gte: todayStart,
+            gte: startOfDayBST,
           },
         },
         _sum: {
@@ -131,7 +143,7 @@ export async function GET(req) {
       const totalCollectedPayment = await prisma.collectPayment.aggregate({
         where: {
           created_at: {
-            gte: todayStart,
+            gte: startOfDayBST,
           },
         },
         _sum: {
