@@ -29,7 +29,7 @@ export async function GET(req, res) {
 
         // get customer total collectPayment amount
         const totalCustomerCollection = await prisma.collectPayment.aggregate({
-          where:{customer_id:Number(saleId)},
+          where:{customer_id:Number(saleId),invoice:"null"},
           _sum: {
             amount:true
           }
