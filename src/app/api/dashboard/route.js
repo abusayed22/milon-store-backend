@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
+import { format, utcToZonedTime } from "date-fns-tz";
 
 const prisma = new PrismaClient();
 
@@ -8,27 +9,11 @@ export async function GET(req) {
   const type = searchParams.get("type");
 
   try {
-    // Get current date in Bangladesh time
-    const nowBangladesh = new Date().toLocaleString("en-US", {
-      timeZone: "Asia/Dhaka",
-    });
-
-    // Parse it into a Date object
-    const todayBangladesh = new Date(nowBangladesh);
-
-    // Calculate the start and end of today in Bangladesh time
-    const startOfDayBangladesh = new Date(todayBangladesh.setHours(0, 0, 0, 0)); // 00:00:00
-    const endOfDayBangladesh = new Date(
-      todayBangladesh.setHours(23, 59, 59, 999)
-    ); // 23:59:59
-
-    // Convert the Bangladesh times to UTC
-    const startOfDayUTC = new Date(
-      startOfDayBangladesh.getTime() - 6 * 60 * 60 * 1000
-    ); // UTC-6
-    const endOfDayUTC = new Date(
-      endOfDayBangladesh.getTime() - 6 * 60 * 60 * 1000
-    ); // UTC-6
+    const now = new Date();
+    const today = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+    );
+    console.log(today);
 
     if (type === "sale_calcutlation") {
       // Get today's total amount and quantity for "FEED" category
@@ -36,8 +21,7 @@ export async function GET(req) {
         where: {
           category: "FEED",
           created_at: {
-            gte: startOfDayUTC, // Filter for records from the start of today
-            lte: endOfDayUTC,
+            gte: today,
           },
         },
         _sum: {
@@ -54,8 +38,7 @@ export async function GET(req) {
         where: {
           category: "MEDICINE",
           created_at: {
-            gte: startOfDayUTC, // Filter for records from the start of today
-            lte: endOfDayUTC,
+            gte: today
           },
         },
         _sum: {
@@ -72,8 +55,7 @@ export async function GET(req) {
         where: {
           category: "GROCERY",
           created_at: {
-            gte: startOfDayUTC, // Filter for records from the start of today
-            lte: endOfDayUTC,
+            gte: today
           },
         },
         _sum: {
@@ -92,17 +74,17 @@ export async function GET(req) {
           feedSales: {
             totalAmount: feedSalesAmount,
             totalQuantity: feedSalesQuantity,
-            today: endOfDayUTC,
+            today: today,
           },
           medicineSales: {
             totalAmount: medicineSalesAmount,
             totalQuantity: medicineSalesQuantity,
-            today: endOfDayUTC,
+            today: today,
           },
           grocerySales: {
             totalAmount: grocerySalesAmount,
             totalQuantity: grocerySalesQuantity,
-            today: endOfDayUTC,
+            today: today,
           },
         },
       });
@@ -112,8 +94,7 @@ export async function GET(req) {
         const totalSales = await prisma.sales.aggregate({
           where: {
             created_at: {
-              gte: startOfDayUTC, // Filter for records from the start of today
-              lte: endOfDayUTC,
+              gte: today
             },
           },
           _sum: {
@@ -125,10 +106,7 @@ export async function GET(req) {
         const totalSpecialDiscount = await prisma.specialDiscount.aggregate({
           where: {
             created_at: {
-              created_at: {
-                gte: startOfDayUTC, // Filter for records from the start of today
-                lte: endOfDayUTC,
-              },
+                gte: today
             },
           },
           _sum: {
@@ -142,8 +120,7 @@ export async function GET(req) {
         const totalExpenses = await prisma.expneses.aggregate({
           where: {
             created_at: {
-              gte: startOfDayUTC, // Filter for records from the start of today
-              lte: endOfDayUTC,
+              gte: today
             },
           },
           _sum: {
@@ -156,8 +133,7 @@ export async function GET(req) {
         const totalCollectedPayment = await prisma.collectPayment.aggregate({
           where: {
             created_at: {
-              gte: startOfDayUTC, // Filter for records from the start of today
-              lte: endOfDayUTC,
+              gte:today
             },
           },
           _sum: {
@@ -176,7 +152,7 @@ export async function GET(req) {
           totalSalesAmount,
           totalExpensesAmount,
           totalCollectedAmount,
-          today: endOfDayUTC,
+          today: today,
         });
       } catch (error) {
         console.error(error.message);

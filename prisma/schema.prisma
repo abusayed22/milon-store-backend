@@ -12,8 +12,8 @@ model subCategory {
   id         Int          @id @default(autoincrement())
   category   categoryType
   name       String
-  created_at DateTime     @default(now()) @db.Timestamp(0)
-  updated_at DateTime     @default(now()) @updatedAt @db.Timestamp(0)
+  created_at DateTime     @default(now()) 
+  updated_at DateTime     @default(now()) @updatedAt
 }
 
 model products {
@@ -25,8 +25,8 @@ model products {
   totalpacket Float?
   quantity    Int
   note        String           @db.LongText
-  created_at  DateTime         @default(now()) @db.Timestamp(0)
-  updated_at  DateTime         @default(now()) @updatedAt @db.Timestamp(0)
+  created_at  DateTime         @default(now()) 
+  updated_at  DateTime         @default(now()) @updatedAt 
   unitPrice   Int
   stock       Boolean          @default(true)
   history     productHistory[]
@@ -40,7 +40,7 @@ model productHistory {
   subCategory String?
   totalpacket Float?
   quantity    Int
-  created_at  DateTime     @default(now()) @db.Timestamp(0)
+  created_at  DateTime     @default(now()) 
   unitPrice   Int?
   product     products     @relation(fields: [productId], references: [id])
 
@@ -56,8 +56,8 @@ model productTransferList {
   quantity    Int
   productName String
   note        String        @db.LongText
-  created_at  DateTime      @default(now()) @db.Timestamp(0)
-  updated_at  DateTime      @default(now()) @updatedAt @db.Timestamp(0)
+  created_at  DateTime      @default(now()) 
+  updated_at  DateTime      @default(now()) @updatedAt 
 }
 
 model customers {
@@ -66,8 +66,8 @@ model customers {
   phone          String           @unique
   address        String
   note           String           @db.LongText
-  created_at     DateTime         @default(now()) @db.Timestamp(0)
-  updated_at     DateTime         @default(now()) @updatedAt @db.Timestamp(0)
+  created_at     DateTime         @default(now()) 
+  updated_at     DateTime         @default(now()) @updatedAt 
   collectPyament collectPayment[]
   dueList        dueList[]
   sales          sales[]
@@ -84,8 +84,8 @@ model sales {
   customer_id     Int
   paymentStatus   paymentStatus
   note            String        @db.LongText
-  created_at      DateTime      @default(now()) @db.Timestamp(0)
-  updated_at      DateTime      @default(now()) @updatedAt @db.Timestamp(0)
+  created_at      DateTime      @default(now()) 
+  updated_at      DateTime      @default(now()) @updatedAt 
   discount        Int
   discountedPrice Float
   totalPrice      Float
@@ -99,16 +99,16 @@ model specialDiscount {
   id         Int      @id @unique @default(autoincrement())
   amount     Float
   invoice    String   
-  created_at DateTime @default(now()) @db.Timestamp(0)
-  updated_at DateTime @default(now()) @updatedAt @db.Timestamp(0)
+  created_at DateTime @default(now()) 
+  updated_at DateTime @default(now()) @updatedAt 
 }
 
 model expneses {
   id         Int      @id @unique @default(autoincrement())
   amount     Float
   note       String   @db.LongText
-  created_at DateTime @default(now()) @db.Timestamp(0)
-  updated_at DateTime @default(now()) @updatedAt @db.Timestamp(0)
+  created_at DateTime @default(now()) 
+  updated_at DateTime @default(now()) @updatedAt 
 }
 
 model collectPayment {
@@ -117,8 +117,8 @@ model collectPayment {
   amount       Float
   invoice      String?
   note         String    @db.LongText
-  created_at   DateTime  @default(now()) @db.Timestamp(0)
-  updated_at   DateTime  @default(now()) @updatedAt @db.Timestamp(0)
+  created_at   DateTime  @default(now()) 
+  updated_at   DateTime  @default(now()) @updatedAt 
   customerName customers @relation(fields: [customer_id], references: [id])
 
   @@index([customer_id], map: "collectPayment_customer_id_fkey")
@@ -132,8 +132,8 @@ model dueList {
   amount          Float
   invoice         String
   note            String       @db.LongText
-  created_at      DateTime     @default(now()) @db.Timestamp(0)
-  updated_at      DateTime     @default(now()) @updatedAt @db.Timestamp(0)
+  created_at      DateTime     @default(now()) 
+  updated_at      DateTime     @default(now()) @updatedAt 
   customer        customers    @relation(fields: [customer_id], references: [id])
 
   @@index([customer_id], map: "dueList_customer_id_fkey")
