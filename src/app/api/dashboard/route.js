@@ -88,14 +88,17 @@ console.log("time",todayStartUTC)
           feedSales: {
             totalAmount: feedSalesAmount,
             totalQuantity: feedSalesQuantity,
+            today:todayStartUTC,
           },
           medicineSales: {
             totalAmount: medicineSalesAmount,
             totalQuantity: medicineSalesQuantity,
+            today:todayStartUTC,
           },
           grocerySales: {
             totalAmount: grocerySalesAmount,
             totalQuantity: grocerySalesQuantity,
+            today:todayStartUTC,
           },
         },
       });
@@ -163,6 +166,7 @@ console.log("time",todayStartUTC)
         totalSalesAmount,
         totalExpensesAmount,
         totalCollectedAmount,
+        today:todayStartUTC
       });
       } catch (error) {
         console.error(error.message)
