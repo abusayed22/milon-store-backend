@@ -16,6 +16,18 @@ export async function GET(req) {
     console.log(today);
 
     if (type === "sale_calcutlation") {
+      // Calculate total special Discount for today
+      const totalSpecialDiscount = await prisma.specialDiscount.aggregate({
+        where: {
+          created_at: {
+              gte: today
+          },
+        },
+        _sum: {
+          amount: true,
+        },
+      });
+
       // -------------  Feed ----------
       // Get today's total amount and quantity for "FEED" category
       const feedSales = await prisma.sales.aggregate({
@@ -30,36 +42,11 @@ export async function GET(req) {
           quantity: true,
         },
       });
-      // Feed sales invoices
-      const totalFeedInvoices = await prisma.sales.findMany({
-          where: {
-            category: "FEED",
-            created_at: {
-              gte: today,
-            },
-          },
-        select:{
-          invoice:true
-        }
-      });
-      const feedInvoices= totalFeedInvoices.map(obj => obj.invoice)
-      // Feed sales special Discount Amount
-      const totalFeedSpecialDsicountAmount = await prisma.specialDiscount.aggregate({
-        where:{
-          invoice:{
-            in:feedInvoices
-          }
-        },
-        _sum:{
-          amount:true
-        }
-      });
-      const feedSpecialDiscount =totalFeedSpecialDsicountAmount._sum.amount;
+      
       const feedSalesQuantity = feedSales._sum.quantity || 0;
       // net feed sales amount
-      const feedSalesAmount = feedSales._sum.discountedPrice - feedSpecialDiscount;
+      const feedSalesAmount = feedSales._sum.discountedPrice;
 
-      console.log("feed sd:",feedSpecialDiscount)
       // -------------  Medicne ----------
       // Get today's total amount and quantity for "MEDICINE" category
       const medicineSales = await prisma.sales.aggregate({
@@ -75,35 +62,10 @@ export async function GET(req) {
         },
       });
 
-      // Medicine sales invoices
-      const totalMedicineInvoices = await prisma.sales.findMany({
-        where: {
-          category: "MEDICINE",
-          created_at: {
-            gte: today,
-          },
-        },
-      select:{
-        invoice:true
-      }
-    });
-    const medicineInvoices= totalMedicineInvoices.map(obj => obj.invoice)
-    // Feed sales special Discount Amount
-    const totalMedicineSpecialDsicountAmount = await prisma.specialDiscount.aggregate({
-      where:{
-        invoice:{
-          in:medicineInvoices
-        }
-      },
-      _sum:{
-        amount:true
-      }
-    });
-    const medicineSpecialDiscount = totalMedicineSpecialDsicountAmount._sum.amount
-      const medicineSalesAmount = medicineSales._sum.discountedPrice - medicineSpecialDiscount;
+      
+      const medicineSalesAmount = medicineSales._sum.discountedPrice;
       const medicineSalesQuantity = medicineSales._sum.quantity || 0;
 
-      console.log("medicine sd:",medicineSpecialDiscount)
       // ----------- Grocery ---------
       // Get today's total amount and quantity for "GROCERY" category
       const grocerySales = await prisma.sales.aggregate({
@@ -118,35 +80,10 @@ export async function GET(req) {
           quantity: true,
         },
       });
-      // Feed sales invoices
-      const totalGroceryInvoices = await prisma.sales.findMany({
-        where: {
-          category: "GROCERY",
-          created_at: {
-            gte: today,
-          },
-        },
-      select:{
-        invoice:true
-      }
-    });
-    const groceryInvoices= totalGroceryInvoices.map(obj => obj.invoice)
-    // Feed sales special Discount Amount
-    const totalGrocerySpecialDsicountAmount = await prisma.specialDiscount.aggregate({
-      where:{
-        invoice:{
-          in:groceryInvoices
-        }
-      },
-      _sum:{
-        amount:true
-      }
-    });
-    const grocerySpecialDiscount = totalGrocerySpecialDsicountAmount._sum.amount
-      const grocerySalesAmount = grocerySales._sum.discountedPrice - grocerySpecialDiscount;
+      
+      const grocerySalesAmount = grocerySales._sum.discountedPrice 
       const grocerySalesQuantity = grocerySales._sum.quantity || 0;
 
-      console.log("grocery sd:",grocerySpecialDiscount)
       // Return the aggregated results
       return NextResponse.json({
         status: "ok",
@@ -155,16 +92,19 @@ export async function GET(req) {
             totalAmount: feedSalesAmount,
             totalQuantity: feedSalesQuantity,
             today: today,
+            totalSpecialDiscount
           },
           medicineSales: {
             totalAmount: medicineSalesAmount,
             totalQuantity: medicineSalesQuantity,
             today: today,
+            totalSpecialDiscount
           },
           grocerySales: {
             totalAmount: grocerySalesAmount,
             totalQuantity: grocerySalesQuantity,
             today: today,
+            totalSpecialDiscount
           },
         },
       });
