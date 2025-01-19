@@ -23,7 +23,7 @@ export async function GET(req) {
 });
 
 console.log("BD",todayBangladesh)
-console.log(todayStartUTC)
+console.log("time",todayStartUTC)
 
     if (type === "sale_calcutlation") {
       // Define the start of today to filter records from midnight
