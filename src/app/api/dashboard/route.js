@@ -1,6 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
-import { format, utcToZonedTime } from "date-fns-tz";
+import { DateTime } from 'luxon';
 
 const prisma = new PrismaClient();
 
@@ -15,19 +15,15 @@ export async function GET(req) {
     // );
     // console.log(today);
 
-    // Get the current UTC date
-    const now = new Date();
-    // Get the offset for Bangladesh Standard Time (UTC +6 hours)
-    const bangladeshOffset = 6 * 60; // 6 hours in minutes
-    // Set the start of the day (00:00:00 BST)
-    const startOfDayBST = new Date(now.getTime() + bangladeshOffset * 60000);
-    startOfDayBST.setHours(0, 0, 0, 0); // Set to 00:00:00 in Bangladesh Time
+    // Set the timezone to Asia/Dhaka
+    const timeZone = 'Asia/Dhaka';
 
-    // Set the end of the day (23:59:59 BST)
-    const endOfDayBST = new Date(now.getTime() + bangladeshOffset * 60000);
-    endOfDayBST.setHours(23, 59, 59, 999); // Set to 23:59:59 in Bangladesh Time
-    console.log(startOfDayBST)
-    console.log(endOfDayBST)
+    // Get the start and end of the current day in BST
+    const startOfDayBST = DateTime.now().setZone(timeZone).startOf('day').toJSDate();
+    const endOfDayBST = DateTime.now().setZone(timeZone).endOf('day').toJSDate();
+
+    console.log("Start of Day BST:", startOfDayBST);
+    console.log("End of Day BST:", endOfDayBST);
 
 
     if (type === "sale_calcutlation") {

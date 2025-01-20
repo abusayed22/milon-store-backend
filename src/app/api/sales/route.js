@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
-import { DateTime } from "@prisma/client";
+// import { DateTime } from "@prisma/client";
+import { DateTime } from 'luxon';
 
 const prisma = new PrismaClient();
 
@@ -267,31 +268,28 @@ export async function PATCH(req, res) {
   const pageSizeInt = parseInt(pageSize);
 
   try {
-    //   // Get the current UTC date
-    //   const now = new Date();
-    //   // Get the offset for Bangladesh Standard Time (UTC +6 hours)
-    //   const bangladeshOffset = 6 * 60; // 6 hours in minutes
-    //   // Set the start of the day (00:00:00 BST)
-    //   const startOfDayBST = new Date(now.getTime() + bangladeshOffset * 60000);
-    //   startOfDayBST.setHours(0, 0, 0, 0); // Set to 00:00:00 in Bangladesh Time
+    // Get the current UTC date
+    // const now = new Date();
+    // // Get the offset for Bangladesh Standard Time (UTC +6 hours)
+    // const bangladeshOffset = 6 * 60; // 6 hours in minutes
+    // // Set the start of the day (00:00:00 BST)
+    // const startOfDayBST = new Date(now.getTime() + bangladeshOffset * 60000);
+    // startOfDayBST.setHours(0, 0, 0, 0); // Set to 00:00:00 in Bangladesh Time
 
-    //   // Set the end of the day (23:59:59 BST)
-    //   const endOfDayBST = new Date(now.getTime() + bangladeshOffset * 60000);
-    //   endOfDayBST.setHours(23, 59, 59, 999); // Set to 23:59:59 in Bangladesh Time
+    // // Set the end of the day (23:59:59 BST)
+    // const endOfDayBST = new Date(now.getTime() + bangladeshOffset * 60000);
+    // endOfDayBST.setHours(23, 59, 59, 999); // Set to 23:59:59 in Bangladesh Time
 
-    const timeZone = "Asia/Dhaka";
+
+    const timeZone = 'Asia/Dhaka';
+
     // Get the start and end of the current day in BST
-    const startOfDayBST = DateTime.now()
-      .setZone(timeZone)
-      .startOf("day")
-      .toJSDate();
-    const endOfDayBST = DateTime.now()
-      .setZone(timeZone)
-      .endOf("day")
-      .toJSDate();
+    const startOfDayBST = DateTime.now().setZone(timeZone).startOf('day').toJSDate();
+    const endOfDayBST = DateTime.now().setZone(timeZone).endOf('day').toJSDate();
 
     console.log("Start of Day BST:", startOfDayBST);
     console.log("End of Day BST:", endOfDayBST);
+    
 
     if (status == "today") {
       const sales = await prisma.sales.findMany({
@@ -448,6 +446,7 @@ export async function OPTIONS(req, res) {
     });
   }
 }
+
 
 export async function POST(req, res) {
   try {
