@@ -9,18 +9,32 @@ export async function GET(req) {
   const type = searchParams.get("type");
 
   try {
+    // const now = new Date();
+    // const today = new Date(
+    //   Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
+    // );
+    // console.log(today);
+
+    // Get the current UTC date
     const now = new Date();
-    const today = new Date(
-      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
-    );
-    console.log(today);
+    // Get the offset for Bangladesh Standard Time (UTC +6 hours)
+    const bangladeshOffset = 6 * 60; // 6 hours in minutes
+    // Set the start of the day (00:00:00 BST)
+    const startOfDayBST = new Date(now.getTime() + bangladeshOffset * 60000);
+    startOfDayBST.setHours(0, 0, 0, 0); // Set to 00:00:00 in Bangladesh Time
+
+    // Set the end of the day (23:59:59 BST)
+    const endOfDayBST = new Date(now.getTime() + bangladeshOffset * 60000);
+    endOfDayBST.setHours(23, 59, 59, 999); // Set to 23:59:59 in Bangladesh Time
+
 
     if (type === "sale_calcutlation") {
       // Calculate total special Discount for today
       const totalSpecialDiscount = await prisma.specialDiscount.aggregate({
         where: {
           created_at: {
-              gte: today
+            gte: startOfDayBST,
+            lte: endOfDayBST,
           },
         },
         _sum: {
@@ -34,7 +48,8 @@ export async function GET(req) {
         where: {
           category: "FEED",
           created_at: {
-            gte: today,
+            gte: startOfDayBST,
+            lte: endOfDayBST,
           },
         },
         _sum: {
@@ -53,7 +68,8 @@ export async function GET(req) {
         where: {
           category: "MEDICINE",
           created_at: {
-            gte: today
+            gte: startOfDayBST,
+            lte: endOfDayBST,
           },
         },
         _sum: {
@@ -72,7 +88,8 @@ export async function GET(req) {
         where: {
           category: "GROCERY",
           created_at: {
-            gte: today
+            gte: startOfDayBST,
+            lte: endOfDayBST,
           },
         },
         _sum: {
@@ -91,19 +108,19 @@ export async function GET(req) {
           feedSales: {
             totalAmount: feedSalesAmount,
             totalQuantity: feedSalesQuantity,
-            today: today,
+            today: endOfDayBST,
             totalSpecialDiscount
           },
           medicineSales: {
             totalAmount: medicineSalesAmount,
             totalQuantity: medicineSalesQuantity,
-            today: today,
+            today: endOfDayBST,
             totalSpecialDiscount
           },
           grocerySales: {
             totalAmount: grocerySalesAmount,
             totalQuantity: grocerySalesQuantity,
-            today: today,
+            today: endOfDayBST,
             totalSpecialDiscount
           },
         },
@@ -114,7 +131,8 @@ export async function GET(req) {
         const todayTotalSalesAmount = await prisma.sales.aggregate({
           where: {
             created_at: {
-              gte: today
+              gte: startOfDayBST,
+              lte: endOfDayBST,
             },
           },
           _sum: {
@@ -126,7 +144,8 @@ export async function GET(req) {
         const totalSpecialDiscount = await prisma.specialDiscount.aggregate({
           where: {
             created_at: {
-                gte: today
+              gte: startOfDayBST,
+              lte: endOfDayBST,
             },
           },
           _sum: {
@@ -139,7 +158,8 @@ export async function GET(req) {
         const totalExpenses = await prisma.expneses.aggregate({
           where: {
             created_at: {
-              gte: today
+              gte: startOfDayBST,
+              lte: endOfDayBST,
             },
           },
           _sum: {
@@ -152,7 +172,8 @@ export async function GET(req) {
         const totalCollectedPayment = await prisma.collectPayment.aggregate({
           where: {
             created_at: {
-              gte:today
+              gte: startOfDayBST,
+              lte: endOfDayBST,
             },
           },
           _sum: {
@@ -170,7 +191,7 @@ export async function GET(req) {
           totalSalesAmount,
           totalExpensesAmount,
           totalCollectedAmount,
-          today: today,
+          today: endOfDayBST,
         });
       } catch (error) {
         console.error(error.message);
