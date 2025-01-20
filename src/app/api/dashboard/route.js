@@ -1,6 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
-import { DateTime } from 'luxon';
+import { DateTime } from "luxon";
 
 const prisma = new PrismaClient();
 
@@ -9,23 +9,21 @@ export async function GET(req) {
   const type = searchParams.get("type");
 
   try {
-
-    const timeZone = 'Asia/Dhaka';
+    const timeZone = "Asia/Dhaka";
 
     // Get the current UTC time
-    
-    const nowInDhaka = DateTime.now().setZone(timeZone);
-    const startOfDayUTC = nowInDhaka.startOf("day").toUTC();
-    const endOfDayUTC = nowInDhaka.endOf("day").toUTC();
-    
-        console.log("Start of Day BST:", startOfDayUTC);
-        console.log("End of Day BST:", endOfDayUTC);
+    const nowUTC = DateTime.utc();
 
+    // Calculate the start and end of the day in UTC, adjusted for Asia/Dhaka
+    const startOfDayUTC = nowUTC.setZone(timeZone).startOf("day").toUTC();
+    const endOfDayUTC = nowUTC.setZone(timeZone).endOf("day").toUTC();
 
+    console.log("Start of Day BST:", startOfDayUTC);
+    console.log("End of Day BST:", endOfDayUTC);
 
     if (type === "sale_calcutlation") {
       // Calculate total special Discount for today
-      const totalSpecialDiscount = await prisma.specialDiscount.aggregate({
+      const totalSpecialDiscountAmount = await prisma.specialDiscount.aggregate({
         where: {
           created_at: {
             gte: startOfDayUTC,
@@ -36,6 +34,7 @@ export async function GET(req) {
           amount: true,
         },
       });
+      const totalSpecialDiscount = totalSpecialDiscountAmount._sum.amount
 
       // -------------  Feed ----------
       // Get today's total amount and quantity for "FEED" category
@@ -52,7 +51,7 @@ export async function GET(req) {
           quantity: true,
         },
       });
-      
+
       const feedSalesQuantity = feedSales._sum.quantity || 0;
       // net feed sales amount
       const feedSalesAmount = feedSales._sum.discountedPrice;
@@ -73,7 +72,6 @@ export async function GET(req) {
         },
       });
 
-      
       const medicineSalesAmount = medicineSales._sum.discountedPrice;
       const medicineSalesQuantity = medicineSales._sum.quantity || 0;
 
@@ -92,8 +90,8 @@ export async function GET(req) {
           quantity: true,
         },
       });
-      
-      const grocerySalesAmount = grocerySales._sum.discountedPrice 
+
+      const grocerySalesAmount = grocerySales._sum.discountedPrice;
       const grocerySalesQuantity = grocerySales._sum.quantity || 0;
 
       // Return the aggregated results
@@ -104,19 +102,19 @@ export async function GET(req) {
             totalAmount: feedSalesAmount,
             totalQuantity: feedSalesQuantity,
             today: endOfDayUTC,
-            totalSpecialDiscount
+            totalSpecialDiscount,
           },
           medicineSales: {
             totalAmount: medicineSalesAmount,
             totalQuantity: medicineSalesQuantity,
             today: endOfDayUTC,
-            totalSpecialDiscount
+            totalSpecialDiscount,
           },
           grocerySales: {
             totalAmount: grocerySalesAmount,
             totalQuantity: grocerySalesQuantity,
             today: endOfDayUTC,
-            totalSpecialDiscount
+            totalSpecialDiscount,
           },
         },
       });
@@ -147,7 +145,9 @@ export async function GET(req) {
             amount: true,
           },
         });
-        const totalSalesAmount = todayTotalSalesAmount._sum.discountedPrice - totalSpecialDiscount._sum.amount;
+        const totalSalesAmount =
+          todayTotalSalesAmount._sum.discountedPrice -
+          totalSpecialDiscount._sum.amount;
 
         // Calculate total expenses for today
         const totalExpenses = await prisma.expneses.aggregate({
@@ -178,7 +178,8 @@ export async function GET(req) {
         const totalCollectedAmount = totalCollectedPayment._sum.amount || 0;
 
         // Calculate available cash
-        const availableCash = (totalSalesAmount + totalCollectedAmount) - totalExpensesAmount;
+        const availableCash =
+          totalSalesAmount + totalCollectedAmount - totalExpensesAmount;
 
         return NextResponse.json({
           status: "ok",
