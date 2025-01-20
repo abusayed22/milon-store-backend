@@ -9,26 +9,18 @@ export async function GET(req) {
   const type = searchParams.get("type");
 
   try {
-    // const now = new Date();
-    // const today = new Date(
-    //   Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())
-    // );
-    // console.log(today);
 
     const timeZone = 'Asia/Dhaka';
 
     // Get the current UTC time
-    const nowUTC = DateTime.utc();
     
-    // Calculate the start and end of the day in UTC, adjusted for Asia/Dhaka
-    const startOfDayUTC = nowUTC.setZone(timeZone).startOf('day').toUTC();
-    const endOfDayUTC = nowUTC.setZone(timeZone).endOf('day').toUTC();
+    const nowInDhaka = DateTime.now().setZone(timeZone);
+    const startOfDayUTC = nowInDhaka.startOf("day").toUTC();
+    const endOfDayUTC = nowInDhaka.endOf("day").toUTC();
     
         console.log("Start of Day BST:", startOfDayUTC);
         console.log("End of Day BST:", endOfDayUTC);
 
-    // console.log("Start of Day BST:", startOfDayBST);
-    // console.log("End of Day BST:", endOfDayBST);
 
 
     if (type === "sale_calcutlation") {
