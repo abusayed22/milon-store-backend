@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
-import { DateTime } from "@prisma/client";
+// import { DateTime } from "@prisma/client";
+import { DateTime } from 'luxon';
 
 const prisma = new PrismaClient();
 
@@ -78,14 +79,18 @@ export async function GET(req, res) {
     // endOfDayBST.setHours(23, 59, 59, 999); // Set to 23:59:59 in Bangladesh Time
 
     
-    const timeZone = 'Asia/Dhaka';
+   // Define the timezone
+const timeZone = 'Asia/Dhaka';
 
-    // Get the start and end of the current day in BST
-    const startOfDayBST = DateTime.now().setZone(timeZone).startOf('day').toJSDate();
-    const endOfDayBST = DateTime.now().setZone(timeZone).endOf('day').toJSDate();
+// Get the current UTC time
+const nowUTC = DateTime.utc();
 
-    console.log("Start of Day BST:", startOfDayBST);
-    console.log("End of Day BST:", endOfDayBST);
+// Calculate the start and end of the day in UTC, adjusted for Asia/Dhaka
+const startOfDayUTC = nowUTC.setZone(timeZone).startOf('day').toUTC();
+const endOfDayUTC = nowUTC.setZone(timeZone).endOf('day').toUTC();
+
+    console.log("Start of Day BST:", startOfDayUTC);
+    console.log("End of Day BST:", endOfDayUTC);
 
     // ----------today total calculation ----------
 
@@ -93,8 +98,8 @@ export async function GET(req, res) {
     const salesData = await prisma.sales.findMany({
       where: {
         created_at: {
-          gte: startOfDayBST, // Start of day in UTC
-          lte: endOfDayBST, // End of day in UTC
+          gte: startOfDayUTC, // Start of day in UTC
+          lte: endOfDayUTC, // End of day in UTC
         },
       },
       select: {
@@ -118,8 +123,8 @@ export async function GET(req, res) {
       },
       where: {
         created_at: {
-          gte: startOfDayBST, // Start of day in UTC
-          lte: endOfDayBST, // End of day in UTC
+          gte: startOfDayUTC, // Start of day in UTC
+          lte: endOfDayUTC, // End of day in UTC
         },
       },
     });
@@ -148,8 +153,8 @@ export async function GET(req, res) {
     const totalSalesCount = await prisma.sales.count({
       where: {
         created_at: {
-          gte: startOfDayBST, // Start of day in UTC
-          lte: endOfDayBST, // End of day in UTC
+          gte: startOfDayUTC, // Start of day in UTC
+          lte: endOfDayUTC, // End of day in UTC
         },
       },
     });
@@ -247,7 +252,7 @@ export async function GET(req, res) {
         todayTotalSalesPrice,
         todayTotalDueAmount,
         todayTotalCashAmount,
-        today: startOfDayBST,
+        today: endOfDayUTC,
       },
       pagination: {
         currentPage: pageInt,

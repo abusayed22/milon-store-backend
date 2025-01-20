@@ -15,15 +15,20 @@ export async function GET(req) {
     // );
     // console.log(today);
 
-    // Set the timezone to Asia/Dhaka
     const timeZone = 'Asia/Dhaka';
 
-    // Get the start and end of the current day in BST
-    const startOfDayBST = DateTime.now().setZone(timeZone).startOf('day').toJSDate();
-    const endOfDayBST = DateTime.now().setZone(timeZone).endOf('day').toJSDate();
+    // Get the current UTC time
+    const nowUTC = DateTime.utc();
+    
+    // Calculate the start and end of the day in UTC, adjusted for Asia/Dhaka
+    const startOfDayUTC = nowUTC.setZone(timeZone).startOf('day').toUTC();
+    const endOfDayUTC = nowUTC.setZone(timeZone).endOf('day').toUTC();
+    
+        console.log("Start of Day BST:", startOfDayUTC);
+        console.log("End of Day BST:", endOfDayUTC);
 
-    console.log("Start of Day BST:", startOfDayBST);
-    console.log("End of Day BST:", endOfDayBST);
+    // console.log("Start of Day BST:", startOfDayBST);
+    // console.log("End of Day BST:", endOfDayBST);
 
 
     if (type === "sale_calcutlation") {
@@ -31,8 +36,8 @@ export async function GET(req) {
       const totalSpecialDiscount = await prisma.specialDiscount.aggregate({
         where: {
           created_at: {
-            gte: startOfDayBST,
-            lte: endOfDayBST,
+            gte: startOfDayUTC,
+            lte: endOfDayUTC,
           },
         },
         _sum: {
@@ -46,8 +51,8 @@ export async function GET(req) {
         where: {
           category: "FEED",
           created_at: {
-            gte: startOfDayBST,
-            lte: endOfDayBST,
+            gte: startOfDayUTC,
+            lte: endOfDayUTC,
           },
         },
         _sum: {
@@ -66,8 +71,8 @@ export async function GET(req) {
         where: {
           category: "MEDICINE",
           created_at: {
-            gte: startOfDayBST,
-            lte: endOfDayBST,
+            gte: startOfDayUTC,
+            lte: endOfDayUTC,
           },
         },
         _sum: {
@@ -86,8 +91,8 @@ export async function GET(req) {
         where: {
           category: "GROCERY",
           created_at: {
-            gte: startOfDayBST,
-            lte: endOfDayBST,
+            gte: startOfDayUTC,
+            lte: endOfDayUTC,
           },
         },
         _sum: {
@@ -106,19 +111,19 @@ export async function GET(req) {
           feedSales: {
             totalAmount: feedSalesAmount,
             totalQuantity: feedSalesQuantity,
-            today: endOfDayBST,
+            today: endOfDayUTC,
             totalSpecialDiscount
           },
           medicineSales: {
             totalAmount: medicineSalesAmount,
             totalQuantity: medicineSalesQuantity,
-            today: endOfDayBST,
+            today: endOfDayUTC,
             totalSpecialDiscount
           },
           grocerySales: {
             totalAmount: grocerySalesAmount,
             totalQuantity: grocerySalesQuantity,
-            today: endOfDayBST,
+            today: endOfDayUTC,
             totalSpecialDiscount
           },
         },
@@ -129,8 +134,8 @@ export async function GET(req) {
         const todayTotalSalesAmount = await prisma.sales.aggregate({
           where: {
             created_at: {
-              gte: startOfDayBST,
-              lte: endOfDayBST,
+              gte: startOfDayUTC,
+              lte: endOfDayUTC,
             },
           },
           _sum: {
@@ -142,8 +147,8 @@ export async function GET(req) {
         const totalSpecialDiscount = await prisma.specialDiscount.aggregate({
           where: {
             created_at: {
-              gte: startOfDayBST,
-              lte: endOfDayBST,
+              gte: startOfDayUTC,
+              lte: endOfDayUTC,
             },
           },
           _sum: {
@@ -156,8 +161,8 @@ export async function GET(req) {
         const totalExpenses = await prisma.expneses.aggregate({
           where: {
             created_at: {
-              gte: startOfDayBST,
-              lte: endOfDayBST,
+              gte: startOfDayUTC,
+              lte: endOfDayUTC,
             },
           },
           _sum: {
@@ -170,8 +175,8 @@ export async function GET(req) {
         const totalCollectedPayment = await prisma.collectPayment.aggregate({
           where: {
             created_at: {
-              gte: startOfDayBST,
-              lte: endOfDayBST,
+              gte: startOfDayUTC,
+              lte: endOfDayUTC,
             },
           },
           _sum: {
@@ -189,7 +194,7 @@ export async function GET(req) {
           totalSalesAmount,
           totalExpensesAmount,
           totalCollectedAmount,
-          today: endOfDayBST,
+          today: endOfDayUTC,
         });
       } catch (error) {
         console.error(error.message);
