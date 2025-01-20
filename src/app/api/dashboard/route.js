@@ -26,6 +26,8 @@ export async function GET(req) {
     // Set the end of the day (23:59:59 BST)
     const endOfDayBST = new Date(now.getTime() + bangladeshOffset * 60000);
     endOfDayBST.setHours(23, 59, 59, 999); // Set to 23:59:59 in Bangladesh Time
+    console.log(startOfDayBST)
+    console.log(endOfDayBST)
 
 
     if (type === "sale_calcutlation") {
