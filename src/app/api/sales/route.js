@@ -1,7 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
 // import { DateTime } from "@prisma/client";
-import { DateTime } from 'luxon';
+import { DateTime } from "luxon";
 
 const prisma = new PrismaClient();
 
@@ -64,30 +64,16 @@ export async function GET(req, res) {
       });
     }
 
-    // Get the current UTC date
-    // const now = new Date();
 
-    // // Get the offset for Bangladesh Standard Time (UTC +6 hours)
-    // const bangladeshOffset = 6 * 60; // 6 hours in minutes
+    // Define the timezone
+    const timeZone = "Asia/Dhaka";
 
-    // // Set the start of the day (00:00:00 BST)
-    // const startOfDayBST = new Date(now.getTime() + bangladeshOffset * 60000);
-    // startOfDayBST.setHours(0, 0, 0, 0); // Set to 00:00:00 in Bangladesh Time
+    // Get the current UTC time
+    const nowUTC = DateTime.utc();
 
-    // // Set the end of the day (23:59:59 BST)
-    // const endOfDayBST = new Date(now.getTime() + bangladeshOffset * 60000);
-    // endOfDayBST.setHours(23, 59, 59, 999); // Set to 23:59:59 in Bangladesh Time
-
-    
-   // Define the timezone
-const timeZone = 'Asia/Dhaka';
-
-// Get the current UTC time
-const nowUTC = DateTime.utc();
-
-// Calculate the start and end of the day in UTC, adjusted for Asia/Dhaka
-const startOfDayUTC = nowUTC.setZone(timeZone).startOf('day').toUTC();
-const endOfDayUTC = nowUTC.setZone(timeZone).endOf('day').toUTC();
+    // Calculate the start and end of the day in UTC, adjusted for Asia/Dhaka
+    const startOfDayUTC = nowUTC.setZone(timeZone).startOf("day").toUTC();
+    const endOfDayUTC = nowUTC.setZone(timeZone).endOf("day").toUTC();
 
     console.log("Start of Day BST:", startOfDayUTC);
     console.log("End of Day BST:", endOfDayUTC);
@@ -449,7 +435,6 @@ export async function OPTIONS(req, res) {
     });
   }
 }
-
 
 export async function POST(req, res) {
   try {
