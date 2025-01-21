@@ -64,7 +64,6 @@ export async function GET(req, res) {
       );
     }
 
-
     // 1️⃣ Fetch Product History Data for Date Range
     const productHistory = await prisma.productHistory.findMany({
       where: {
@@ -80,7 +79,6 @@ export async function GET(req, res) {
         created_at: "desc",
       },
     });
-    
 
     // Fetch Current Product Stock
     const currentStock = await prisma.products.findMany({
@@ -100,78 +98,95 @@ export async function GET(req, res) {
     });
 
     // calculate summary report
-    const totalproductsSummary = currentStock.map((product) => {
-      // console.log("his:",productHistory)
+    const totalproductsSummary = await Promise.all(
+      currentStock.map(async (product) => {
+        // Filter the history entries for this specific product
+        const historyEntriesForProduct = productHistory.filter((history) => {
+          return history.productId === product.id;
+        });
 
-      // Filter the history entries for this specific product
-      const historyEntriesForProduct = productHistory.filter((history) => {
-        return history.productId === product.id;
-      });
+        // Fetch the product with product id for its sales calculation
+        const saleProductQuntity = await prisma.sales.aggregate({
+          where: {
+            created_at: {
+              gte: start?.toISOString(), // Start of day in UTC
+              lte: end?.toISOString(), // End of day in UTC
+            },
+          },
+          _sum: {
+            quantity: true,
+            totalpacket: true,
+          },
+        });
+        const salePacket = saleProductQuntity._sum.totalpacket || 0;
+        const saleQty = saleProductQuntity._sum.quantity || 0;
 
-      // Check if historyEntriesForProduct is empty
-      // console.log("History Entries for Product:", historyEntriesForProduct); // Debug
+        // Calculate the total packets added for this specific product
+        const totalAddPacket = historyEntriesForProduct.reduce((sum, entry) => {
+          const totalpacketValue = Number(entry.totalpacket);
+          const totalQuantityValue = Number(entry.quantity);
 
-      // Calculate the total packets added for this specific product
-      const totalAddPacket = historyEntriesForProduct.reduce((sum, entry) => {
-        const totalpacketValue = Number(entry.totalpacket);
-        const totalQuantityValue = Number(entry.quantity);
+          // Check feed and other
+          if (product.category === "FEED") {
+            // Check if totalpacket is a valid number
+            if (
+              typeof totalpacketValue !== "number" ||
+              isNaN(totalpacketValue)
+            ) {
+              return sum; // Skip invalid values
+            }
 
-        // check feed and other
+            return sum + totalpacketValue;
+          } else {
+            // Check if quantity is a valid number
+            if (
+              typeof totalQuantityValue !== "number" ||
+              isNaN(totalQuantityValue)
+            ) {
+              return sum; // Skip invalid values
+            }
+            return sum + totalQuantityValue;
+          }
+        }, 0);
+
+        // Optional: Calculate other values like total quantity, total stock, etc.
+        const totalAddProductQty = historyEntriesForProduct.reduce(
+          (sum, entry) => sum + (entry.quantity || 0),
+          0
+        );
+
+        let totalStockPacket;
         if (product.category === "FEED") {
-          // Check if totalpacket is a valid number
-          if (typeof totalpacketValue !== "number" || isNaN(totalpacketValue)) {
-            return sum; // Skip invalid values
-          }
-
-          return sum + totalpacketValue;
+          totalStockPacket = product.totalpacket || 0;
         } else {
-          // Check if quantity is a valid number
-          if (
-            typeof totalQuantityValue !== "number" ||
-            isNaN(totalQuantityValue)
-          ) {
-            return sum; // Skip invalid values
-          }
-          return sum + totalQuantityValue;
+          totalStockPacket = product.quantity || 0;
         }
-      }, 0);
 
-      // Optional: Calculate other values like total quantity, total stock, etc.
-      const totalAddProductQty = historyEntriesForProduct.reduce(
-        (sum, entry) => sum + (entry.quantity || 0),
-        0
-      );
+        const totalStockQty = product.quantity || 0;
 
-      // const totalStockPacket = product.totalpacket || 0;
-      let totalStockPacket;
-      if (product.category === "FEED") {
-        totalStockPacket = product.totalpacket || 0;
-      } else {
-        totalStockPacket = product.quantity || 0;
-      }
+        const totalSalePacket = totalAddPacket - totalStockPacket || 0;
+        const totalSaleQty = totalAddProductQty - totalStockQty || 0;
 
-      const totalStockQty = product.quantity || 0;
+        const valueStock =
+          (product.unitPrice || 0) *
+          (product.quantity || product.totalpacket || 0);
 
-      const totalSalePacket = totalAddPacket - totalStockPacket;
-      const totalSaleQty = totalAddProductQty - totalStockQty;
-
-      const valueStock =
-        (product.unitPrice || 0) *
-        (product.quantity || product.totalpacket || 0);
-
-      return {
-        productName: product.name,
-        category: product.category,
-        subCategory: product.subCategory || "null",
-        totalAddPacket,
-        totalStockPacket,
-        totalSalePacket,
-        totalAddProductQty,
-        totalStockQty,
-        totalSaleQty,
-        valueStock,
-      };
-    });
+        return {
+          productName: product.name,
+          category: product.category,
+          subCategory: product.subCategory || "null",
+          totalAddPacket,
+          totalStockPacket,
+          totalSalePacket,
+          totalAddProductQty,
+          totalStockQty,
+          totalSaleQty,
+          valueStock,
+          salePacket,
+          saleQty,
+        };
+      }) // <-- Closing parenthesis for the `map` function
+    );
 
     const productSummary = totalproductsSummary.slice(
       (page - 1) * limit,
