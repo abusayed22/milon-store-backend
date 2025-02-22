@@ -69,6 +69,7 @@ model customers {
   created_at     DateTime         @default(now())
   updated_at     DateTime         @default(now()) @updatedAt
   collectPyament collectPayment[]
+  customerLoan   customerLoan[]
   dueList        dueList[]
   sales          sales[]
 }
@@ -120,6 +121,18 @@ model collectPayment {
   updated_at   DateTime  @default(now()) @updatedAt
   invoice      String?
   customerName customers @relation(fields: [customer_id], references: [id])
+
+  @@index([customer_id], map: "collectPayment_customer_id_fkey")
+}
+
+model customerLoan {
+  id          Int       @id @unique @default(autoincrement())
+  customer_id Int
+  amount      Float
+  note        String    @db.TinyText
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @default(now()) @updatedAt
+  customer    customers @relation(fields: [customer_id], references: [id])
 
   @@index([customer_id], map: "collectPayment_customer_id_fkey")
 }
