@@ -1,0 +1,16 @@
+{
+  "/_not-found/page": "app/_not-found/page.js",
+  "/api/category/route": "app/api/category/route.js",
+  "/api/collectPayment/route": "app/api/collectPayment/route.js",
+  "/api/customerProfile/route": "app/api/customerProfile/route.js",
+  "/api/customers/route": "app/api/customers/route.js",
+  "/api/dashboard/route": "app/api/dashboard/route.js",
+  "/api/due/route": "app/api/due/route.js",
+  "/api/expense/route": "app/api/expense/route.js",
+  "/api/productTransfer/route": "app/api/productTransfer/route.js",
+  "/api/products/route": "app/api/products/route.js",
+  "/api/querryProducts/route": "app/api/querryProducts/route.js",
+  "/api/sales/route": "app/api/sales/route.js",
+  "/favicon.ico/route": "app/favicon.ico/route.js",
+  "/page": "app/page.js"
+}

@@ -1,0 +1,165 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider          = "postgresql"
+  url               = env("DATABASE_URL")
+  // shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
+}
+
+model subCategory {
+  id         Int          @id @default(autoincrement())
+  category   categoryType
+  name       String
+  created_at DateTime     @default(now())
+  updated_at DateTime     @default(now()) @updatedAt
+}
+
+model products {
+  id          Int              @id @unique @default(autoincrement())
+  name        String
+  category    categoryType
+  subCategory String?
+  perPacket   Float?
+  totalpacket Float?
+  quantity    Int
+  note        String          
+  created_at  DateTime         @default(now())
+  updated_at  DateTime         @default(now()) @updatedAt
+  unitPrice   Int
+  stock       Boolean          @default(true)
+  history     productHistory[]
+}
+
+model productHistory {
+  id          Int          @id @unique @default(autoincrement())
+  productId   Int
+  name        String
+  category    categoryType
+  subCategory String?
+  totalpacket Float?
+  quantity    Int
+  created_at  DateTime     @default(now())
+  unitPrice   Int?
+  product     products     @relation(fields: [productId], references: [id],map:"productHistory_productId_fk")
+
+  @@index([productId], map: "productHistory_productId_fkey")
+}
+
+model productTransferList {
+  id          Int           @id @unique @default(autoincrement())
+  category    categoryType?
+  subCategory String?
+  perPacket   Float?
+  totalpacket Float?
+  quantity    Int
+  productName String
+  note        String        
+  created_at  DateTime      @default(now())
+  updated_at  DateTime      @default(now()) @updatedAt
+}
+
+model customers {
+  id             Int              @id @unique @default(autoincrement())
+  name           String
+  phone          String           @unique
+  address        String
+  note           String          
+  created_at     DateTime         @default(now())
+  updated_at     DateTime         @default(now()) @updatedAt
+  collectPyament collectPayment[]
+  customerLoan   customerLoan[]
+  dueList        dueList[]
+  sales          sales[]
+}
+
+model sales {
+  id              Int           @id @unique @default(autoincrement())
+  productName     String
+  category        categoryType?
+  subCategory     String?
+  quantity        Float
+  perPacket       Float?
+  totalpacket     Float?
+  customer_id     Int
+  paymentStatus   paymentStatus
+  note            String       
+  created_at      DateTime      @default(now())
+  updated_at      DateTime      @default(now()) @updatedAt
+  discount        Int
+  discountedPrice Float
+  totalPrice      Float
+  invoice         String
+  customers       customers     @relation(fields: [customer_id], references: [id],map: "sales_customer_id_fk")
+
+  @@index([customer_id], map: "sales_customer_id_fkey")
+}
+
+model specialDiscount {
+  id         Int      @id @unique @default(autoincrement())
+  amount     Float
+  invoice    String
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
+}
+
+model expneses {
+  id         Int      @id @unique @default(autoincrement())
+  amount     Float
+  note       String  
+  created_at DateTime @default(now())
+  updated_at DateTime @default(now()) @updatedAt
+}
+
+model collectPayment {
+  id           Int       @id @unique @default(autoincrement())
+  customer_id  Int
+  amount       Float
+  note         String    
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @default(now()) @updatedAt
+  invoice      String?
+  customerName customers @relation(fields: [customer_id], references: [id],map: "collectPayment_customer_id_fk")
+
+  @@index([customer_id], map: "collectPayment_customer_id_fkey_unique")
+}
+
+model customerLoan {
+  id          Int       @id @unique @default(autoincrement())
+  customer_id Int
+  amount      Float
+  note        String    
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @default(now()) @updatedAt
+  customer    customers @relation(fields: [customer_id], references: [id],map: "collectPayment_customer_id_fk")
+
+  @@index([customer_id], map: "collectPayment_customer_id_fkey")
+}
+
+model dueList {
+  id              Int          @id @unique @default(autoincrement())
+  productCategory categoryType
+  subCategory     String?
+  customer_id     Int
+  amount          Float
+  note            String      
+  created_at      DateTime     @default(now())
+  updated_at      DateTime     @default(now()) @updatedAt
+  invoice         String
+  customer        customers    @relation(fields: [customer_id], references: [id],map: "dueList_customer_id_fk")
+
+  @@index([customer_id], map: "dueList_customer_id_fkey")
+}
+
+enum categoryType {
+  FEED
+  MEDICINE
+  GROCERY
+}
+
+enum paymentStatus {
+  due
+  paid
+  partial
+}
