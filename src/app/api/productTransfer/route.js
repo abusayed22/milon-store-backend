@@ -28,7 +28,7 @@ export async function PATCH(req) {
     const pageSize = url.searchParams.get("pageSize");
     const page = current ? Number(current) : 1;
     const limit = pageSize ? Number(pageSize) : 10;
-    const skip = (page - 1) * limit; 
+    const skip = (page - 1) * limit;
 
     // Get today's start and end times in UTC
     // Get the current UTC date
@@ -67,13 +67,15 @@ export async function PATCH(req) {
       },
     });
 
-    return NextResponse.json({ status: "ok", data: products,
+    return NextResponse.json({
+      status: "ok", data: products,
       pagination: {
         // total: totalCount,
         // page,
         // limit,
         totalPages: Math.ceil(totalCount / limit),
-      },});
+      },
+    });
   } catch (error) {
     console.error("Error fetching products for today in UTC:", error);
     return NextResponse.json({ error: "Internal Server Error" });
@@ -84,118 +86,129 @@ export async function PATCH(req) {
 export async function POST(req, res) {
   try {
     const reqBody = await req.json();
-    const {
-      selectedProduct,
-      category,
-      subCategory,
-      perPacket,
-      totalpacket,
-      quantity,
-      customer_id,
-      note,
-    } = reqBody;
+
 
     // const selected = JSON.parse(selectedProduct);
 
     // if sub category not have
-    const whereCondition = {
-      id: Number(selectedProduct?.id),
-      name: selectedProduct?.name,
-    };
 
-    // Step 1: Fetch product details from the `products` table based on `productName`
-    const product = await prisma.products.findFirst({
-      where: { id: Number(selectedProduct?.id) },
-    });
 
-    if (!product) {
-      console.error("Product not found");
-      return NextResponse.json({ status: 404, error: "Product not found" });
-    }
+    const Result = await Promise.all(
+      reqBody.map(async (item) => {
 
-    // Step 2: Calculate quantity based on category length
-    const categoryCount = await prisma.products.count({
-      where: whereCondition,
-    });
+        const {
+          selectedProduct,
+          category,
+          subCategory,
+          perPacket,
+          totalpacket,
+          quantity,
+          note,
+        } = item;
 
-    if (product.quantity < quantity) {
-      console.error("Insufficient product quantity");
-      return NextResponse.json(
-        { error: "Insufficient product quantity" },
-        { status: 400 }
-      );
-    }
+        const whereCondition = {
+          id: Number(selectedProduct?.id),
+          name: selectedProduct?.name,
+        };
 
-    // Step 3: Create sale and update product quantity in a transaction
-    const transfer = await prisma.$transaction(async (prisma) => {
-      // Create the transfer
-      const transferData = {
-        productName: selectedProduct?.name,
-        category: category,
-        subCategory: subCategory,
-        quantity: quantity ? parseFloat(quantity) : null, // Set as null if empty
-        perPacket: perPacket ? parseFloat(perPacket) : null, // Set as null if empty
-        totalpacket: totalpacket ? parseFloat(totalpacket) : null, // Set as null if empty
-        note: note || product.note,
-      };
-      const newTransfer = await prisma.productTransferList.create({
-        data: transferData,
-      });
-      // console.log(transferData)
-      // Update the product's quantity
-      let updatedProduct;
-      if (category !== "FEED") {
-        updatedProduct = await prisma.products.update({
-          where: { id: product.id },
-          data: {
-            quantity: product.quantity - quantity,
-            // totalpacket: product.totalpacket - totalpacket,
-          },
+        // Step 1: Fetch product details from the `products` table based on `productName`
+        const product = await prisma.products.findFirst({
+          where: { id: Number(selectedProduct?.id) },
         });
-        // updatedProduct = updateCalculationProduct;
-      } else {
-        updatedProduct = await prisma.products.update({
-          where: { id: product.id },
-          data: {
-            quantity: product.quantity - quantity,
-            totalpacket: product.totalpacket - totalpacket,
-          }, // Reduce the quantity
+
+        if (!product) {
+          console.error("Product not found");
+          return NextResponse.json({ status: 404, error: "Product not found" });
+        }
+
+        // Step 2: Calculate quantity based on category length
+        const categoryCount = await prisma.products.count({
+          where: whereCondition,
         });
-        // updatedProduct = updateCalculationProduct;
-      }
 
-      // if total packet or quantity is 0 then is now avible for stock
-      if (updatedProduct.category !== "FEED") {
-        if (updatedProduct.quantity <= 0) {
-          // Set stock to false instead of deleting the product
-          await prisma.products.update({
-            where: {
-              id: parseInt(product.id),
-            },
-            data: {
-              stock: false, // Set stock to false
-            },
-          });
+        if (product.quantity < quantity) {
+          console.error("Insufficient product quantity");
+          return NextResponse.json(
+            { error: "Insufficient product quantity" },
+            { status: 400 }
+          );
         }
-      } else {
-        if (updatedProduct.totalpacket <= 0) {
-          // Set stock to false instead of deleting the product
-          await prisma.products.update({
-            where: {
-              id: parseInt(product.id),
-            },
-            data: {
-              stock: false, // Set stock to false
-            },
-          });
-        }
-      }
 
-      return newTransfer;
-    });
-    return NextResponse.json({ status: "ok", data: transfer }, { status: 201 });
+        // Step 3: Create sale and update product quantity in a transaction
+        const transfer = await prisma.$transaction(async (prisma) => {
+          // Create the transfer
+          const transferData = {
+            productName: selectedProduct?.name,
+            category: category,
+            subCategory: subCategory,
+            quantity: quantity ? parseFloat(quantity) : null, // Set as null if empty
+            perPacket: perPacket ? parseFloat(perPacket) : null, // Set as null if empty
+            totalpacket: totalpacket ? parseFloat(totalpacket) : null, // Set as null if empty
+            note: note || "",
+          };
+
+          const newTransfer = await prisma.productTransferList.create({
+            data: transferData,
+          });
+
+          // Update the product's quantity
+          let updatedProduct;
+          if (category !== "FEED") {
+            updatedProduct = await prisma.products.update({
+              where: { id: product.id },
+              data: {
+                quantity: product.quantity - quantity,
+              },
+            });
+          } else {
+            updatedProduct = await prisma.products.update({
+              where: { id: product.id },
+              data: {
+                quantity: product.quantity - quantity,
+                totalpacket: product.totalpacket - totalpacket,
+              },
+            });
+          }
+
+          // if total packet or quantity is 0 then is now avible for stock
+          if (updatedProduct.category !== "FEED") {
+            if (updatedProduct.quantity <= 0) {
+              // Set stock to false instead of deleting the product
+              await prisma.products.update({
+                where: {
+                  id: parseInt(product.id),
+                },
+                data: {
+                  stock: false, // Set stock to false
+                },
+              });
+            }
+          } else {
+            if (updatedProduct.totalpacket <= 0) {
+              // Set stock to false instead of deleting the product
+              await prisma.products.update({
+                where: {
+                  id: parseInt(product.id),
+                },
+                data: {
+                  stock: false, // Set stock to false
+                },
+              });
+            }
+          }
+
+          return newTransfer;
+        });
+
+        return transfer;
+      })
+    );
+
+
+
+    return NextResponse.json({ status: "ok", data: Result }, { status: 201 });
   } catch (error) {
-    console.error("Error creating sale:", error.message);
+    console.error("Error creating transfer:", error.message);
     return NextResponse.json(
       { error: "Failed to create sale" },
       { status: 500 }

@@ -161,6 +161,21 @@ export async function GET(req) {
         });
         const totalExpensesAmount = totalExpenses._sum.amount || 0;
 
+        // today total customer Loan
+        const todayCustomerLoan = await prisma.customerLoan.aggregate({
+          where: {
+            created_at: {
+              gte: startOfDayUTC,
+              lte: endOfDayUTC,
+            },
+          },
+          _sum:{
+            amount:true
+          }
+        });
+        const todayCustomerLoanAmount = todayCustomerLoan._sum.amount;
+
+
         // Total collect payment
         const totalCollectedPayment = await prisma.collectPayment.aggregate({
           where: {
@@ -175,9 +190,12 @@ export async function GET(req) {
         });
         const totalCollectedAmount = totalCollectedPayment._sum.amount || 0;
 
+        // today total collection amount 
+        // const today
+
         // Calculate available cash
         const availableCash =
-          totalSalesAmount + totalCollectedAmount - totalExpensesAmount;
+          (totalSalesAmount + totalCollectedAmount) - (totalExpensesAmount + todayCustomerLoanAmount);
 
         return NextResponse.json({
           status: "ok",
@@ -193,20 +211,42 @@ export async function GET(req) {
       }
     } else if (type === 'total_available_cash') {
       try {
-        // Calculate total sales for total
-        const todayTotalSalesAmount = await prisma.sales.aggregate({
+
+        const paidSaleInvoices = await prisma.sales.findMany({
+          where:{
+            paymentStatus:"paid",
+          },
+          select: {
+            invoice:true
+          }
+        });
+        const paidInvoices = paidSaleInvoices.map((item => item.invoice));
+
+
+        // Calculate total paid sales for total
+        const todayTotalSales = await prisma.sales.aggregate({
+          where:{
+            paymentStatus:"paid"
+          },
           _sum: {
             discountedPrice: true,
           },
         });
-
-        // Calculate total special Discount for today
-        const totalSpecialDiscount = await prisma.specialDiscount.aggregate({
-          _sum: {
-            amount: true,
+        const totalPaidSalesAmount = todayTotalSales._sum.discountedPrice;
+        
+        const paidSaleSpecialDiscount = await prisma.specialDiscount.aggregate({
+          where: {
+            invoice: {
+              in: paidInvoices
+            }
           },
-        });
-        const totalSalesAmount =todayTotalSalesAmount._sum.discountedPrice - totalSpecialDiscount._sum.amount;
+          _sum: {
+            amount: true
+          }
+        })
+        const paidSaleSpecialdiscountAmount = paidSaleSpecialDiscount._sum.amount || 0;
+
+
 
         // Calculate total expenses for today
         const totalExpenses = await prisma.expneses.aggregate({
@@ -224,9 +264,31 @@ export async function GET(req) {
         });
         const totalCollectedAmount = totalCollectedPayment._sum.amount || 0;
 
+        const totalCustomerLoan = await prisma.customerLoan.aggregate({
+          _sum: {
+            amount:true
+          }
+        });
+        const totalCustomerLoanAmount = totalCustomerLoan._sum.amount;
+        // console.log("loan", totalCustomerLoanAmount)
+        // console.log("paidSaledis",paidSaleSpecialdiscountAmount)
+        // console.log("collect",totalCollectedAmount)
+        // console.log("loan",totalCustomerLoanAmount)
+        // console.log("expense",totalExpensesAmount)
+
+
         // Calculate available cash
-        const availableCash =
-          (totalSalesAmount + totalCollectedAmount) - totalExpensesAmount;
+        const availableCash = ((((totalPaidSalesAmount - paidSaleSpecialdiscountAmount) + totalCollectedAmount) - totalCustomerLoanAmount) - totalExpensesAmount);
+        
+        
+        //((((totalSalesAmount- totalSpecialDiscount._sum.amount)+totalCollectedAmount) - totalCustomerLoan ) - totalExpensesAmount ) -
+          // console.log("sale" ,totalSalesAmount)
+          // console.log("collect" ,totalCollectedAmount)
+          // console.log("expense" ,totalExpensesAmount)
+          // console.log("loan" ,totalCustomerLoanAmount)
+          // console.log("sp disc" ,totalSpecialDiscount._sum.amount);
+          // console.log("amount" ,availableCash);
+
 
         return NextResponse.json({
           status: "ok",
