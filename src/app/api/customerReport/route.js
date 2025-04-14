@@ -14,19 +14,19 @@ function DiscountPrice(saleData) {
 }
 
 async function getSpecialDiscount(invoices) {
-  const uniqueInvoices = invoices  // Extract invoice numbers
-    .filter((value, index, self) => self.indexOf(value) === index); // Keep unique values
+  const uniqueInvoices = invoices 
+    .filter((value, index, self) => self.indexOf(value) === index); 
   let conditondata = uniqueInvoices;
   if (Array.isArray(conditondata) && conditondata.length === 0) {
     return 0;
   }
   const result = await prisma.specialDiscount.aggregate({
     _sum: {
-      amount: true, // Sum the discountedPrice column
+      amount: true, 
     },
     where: {
       invoice: {
-        in: conditondata, // Replace with your list of invoice numbers
+        in: conditondata, 
       },
     },
   });
@@ -35,8 +35,8 @@ async function getSpecialDiscount(invoices) {
 
 async function SpecialDiscount(saleData, stype = false) {
   const uniqueInvoices = saleData
-    .map(item => item.invoice)  // Extract invoice numbers
-    .filter((value, index, self) => self.indexOf(value) === index); // Keep unique values
+    .map(item => item.invoice)  
+    .filter((value, index, self) => self.indexOf(value) === index); 
   let conditondata = uniqueInvoices;
 
   if (stype == true) {
@@ -49,11 +49,11 @@ async function SpecialDiscount(saleData, stype = false) {
 
   const result = await prisma.specialDiscount.aggregate({
     _sum: {
-      amount: true, // Sum the discountedPrice column
+      amount: true, 
     },
     where: {
       invoice: {
-        in: conditondata, // Replace with your list of invoice numbers
+        in: conditondata, 
       },
     },
   });
@@ -131,23 +131,26 @@ async function CashAmount(sales) {
 
 
 
-// // API handler function
+// API handler function
 export async function GET(req, res) {
   try {
     const { searchParams } = new URL(req.url);
     const page = searchParams.get("page");
     const pageSize = searchParams.get("pageSize");
+    const userId = searchParams.get("userId");
     const pageInt = page ? parseInt(page) : 1;
     const pageSizeInt = pageSize ? parseInt(pageSize) : 10;
 
+
     const sales = await prisma.sales.findMany({
       where: {
-        customer_id: parseInt(1),
+        customer_id: parseInt(userId),
       },
       orderBy: {
         created_at: "desc",
       },
     });
+    
     let formatedData = Array();
     for (const item of sales) {
       const dateKey = new Date(item.created_at).toISOString().split("T")[0]; // Extract date in YYYY-MM-DD format
@@ -166,12 +169,14 @@ export async function GET(req, res) {
       cash: await CashAmount(salesArray),
     })));
     
+    
     // Paginate the grouped data
     const { paginatedData, totalRecords, totalPages } = paginateGroupedData(
       formatedDataArray,
       pageInt,
       pageSizeInt
     );
+    // console.log(paginatedData)
       return NextResponse.json({
         status: "ok",
         data: paginatedData,
@@ -197,6 +202,7 @@ export async function GET(req, res) {
 
 // Helper function to paginate the grouped data
 const paginateGroupedData = (formatedDataArray, page, pageSize) => {
+
   const totalRecords = formatedDataArray.length; // Get the total number of grouped entries (dates)
 
   const totalPages = Math.ceil(totalRecords / pageSize);
