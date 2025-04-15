@@ -433,6 +433,8 @@ export async function OPTIONS(req, res) {
   }
 }
 
+
+// sales create 
 export async function POST(req, res) {
   try {
     const reqBody = await req.json();
@@ -495,6 +497,7 @@ export async function POST(req, res) {
             await prisma.sales.create({
               data: {
                 productName: selectedProduct?.name,
+                productId: parseInt(selectedProduct?.id),
                 category,
                 subCategory,
                 quantity: parseFloat(quantity),

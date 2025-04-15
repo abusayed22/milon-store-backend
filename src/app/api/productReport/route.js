@@ -79,15 +79,11 @@ export async function GET(req, res) {
         created_at: "desc",
       },
     });
+    
 
-    // Fetch Current Product Stock
     const currentStock = await prisma.products.findMany({
       where: {
         stock: true,
-        // created_at: {
-        //   gte: start?.toISOString(), // Start of day in UTC
-        //   lte: end?.toISOString(), // End of day in UTC
-        // },
       },
       select: {
         id: true,
@@ -102,6 +98,7 @@ export async function GET(req, res) {
     });
 
 
+
     // calculate summary report
     const totalproductsSummary = await Promise.all(
       currentStock.map(async (product) => {
@@ -109,10 +106,12 @@ export async function GET(req, res) {
         const historyEntriesForProduct = productHistory.filter((history) => {
           return history.productId === product.id;
         });
-
+      
+        // console.log(historyEntriesForProduct)
         // Fetch the product with product id for its sales calculation
         const saleProductQuntity = await prisma.sales.aggregate({
           where: {
+            productId:parseInt(product.id),
             created_at: {
               gte: start?.toISOString(), // Start of day in UTC
               lte: end?.toISOString(), // End of day in UTC
@@ -123,8 +122,9 @@ export async function GET(req, res) {
             totalpacket: true,
           },
         });
-        const salePacket = saleProductQuntity._sum.totalpacket || 0;
-        const saleQty = saleProductQuntity._sum.quantity || 0;
+        
+        const totalSalePacket = saleProductQuntity._sum.totalpacket || 0;
+        const totalSaleQty = saleProductQuntity._sum.quantity || 0;
 
         // Calculate the total packets added for this specific product
         const totalAddPacket = historyEntriesForProduct.reduce((sum, entry) => {
@@ -133,14 +133,12 @@ export async function GET(req, res) {
 
           // Check feed and other
           if (product.category === "FEED") {
-            // Check if totalpacket is a valid number
             if (
               typeof totalpacketValue !== "number" ||
               isNaN(totalpacketValue)
             ) {
-              return sum; // Skip invalid values
+              return sum; 
             }
-
             return sum + totalpacketValue;
           } else {
             // Check if quantity is a valid number
@@ -148,7 +146,7 @@ export async function GET(req, res) {
               typeof totalQuantityValue !== "number" ||
               isNaN(totalQuantityValue)
             ) {
-              return sum; // Skip invalid values
+              return sum; 
             }
             return sum + totalQuantityValue;
           }
@@ -169,11 +167,15 @@ export async function GET(req, res) {
 
         const totalStockQty = product.quantity || 0;
 
-        const totalSalePacket = totalAddPacket - totalStockPacket || 0;
-        const totalSaleQty = totalAddProductQty - totalStockQty || 0;
 
-        const valueStock =
-          (product.unitPrice || 0) *
+        // const totalSalePacket = (totalAddPacket - totalStockPacket) || 0;
+        // const totalSaleQty = (totalAddProductQty - totalStockQty) || 0;
+        // const totalSalePacket = Math.max(( totalStockPacket - totalAddPacket), 0);
+        // const totalSaleQty = Math.max((totalAddProductQty - totalStockQty), 0);
+ 
+
+        const valueStock =  
+        (product.unitPrice || 0) *
           (product.quantity || product.totalpacket || 0);
 
         return {
@@ -187,10 +189,10 @@ export async function GET(req, res) {
           totalStockQty,
           totalSaleQty,
           valueStock,
-          salePacket,
-          saleQty,
+          // salePacket,
+          // saleQty,
         };
-      }) // <-- Closing parenthesis for the `map` function
+      }) 
     );
 
     const productSummary = totalproductsSummary.slice(

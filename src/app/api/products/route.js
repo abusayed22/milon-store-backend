@@ -28,7 +28,7 @@ export async function GET(req, res) {
 // product add 
 export async function POST(req, res) {
   const { name, category,subCategory, perPackte, totalpackte, quantity, unitPrice, note } = await req.json();
-  console.log(unitPrice)
+
   try {
     const product = await prisma.products.create({
       data: {
@@ -91,9 +91,10 @@ export async function PUT(req, res) {
                   quantity:parseInt(quantity),
                   unitPrice: unitPrice ? parseInt(unitPrice) : null
                 }
-              }
+              },
           },
       });
+      
 
       return NextResponse.json({ status: "ok", data: updatedProduct });
   } catch (error) {

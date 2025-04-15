@@ -7,30 +7,23 @@ const prisma = new PrismaClient();
 export async function GET(req, res) {
   try {
     const { searchParams } = new URL(req.url);
-    const page = searchParams.get("page");
-    const pageSize = searchParams.get("pageSize");
-    const pageInt = parseInt(page);
-    const pageSizeInt = parseInt(pageSize);
+    const page = parseInt(searchParams.get("page"));
+    const pageSize = parseInt(searchParams.get("pageSize"));
     
-
-    // Use Prisma to retrieve all customers
     const customers = await prisma.customers.findMany({
-      skip: (pageInt - 1) * pageSizeInt,
-      take: pageSizeInt,
-      orderBy:{
-        created_at:"desc"
-      }
-    });
+      skip: (page-1) * pageSize,
+      take: pageSize
+    })
+    
     const totalCustomerCount = await prisma.customers.count();
-    const totalPage = Math.ceil(totalCustomerCount / pageSizeInt);
-    // console.log(pageSizeInt)
+    const totalPage = Math.ceil(totalCustomerCount / pageSize);
 
     return NextResponse.json({
       status: "ok",
       data: customers,
       pagination: {
-        currentPage: pageInt,
-        pageSize: pageSizeInt,
+        currentPage: page,
+        pageSize: pageSize,
         totalCustomer: totalCustomerCount,
         totalPage,
       },
