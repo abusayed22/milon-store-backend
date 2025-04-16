@@ -91,7 +91,41 @@ async function DueAmount(sales) {
   return finalDueAmount;
 }
 
+// date ways customer account status TODO:
+// async function AccountStatus(sales) {
+//   const result = sales.reduce((acc, item) => {
+//     if (item.paymentStatus === "due") { //TODO:
+//       acc.dueAmount += item.discountedPrice
+//       acc.dueInvoice.push(item.invoice)
+//     } else if (item.paymentStatus === "partial") {
+//       acc.partialInvoice.push(item.invoice)
+//     }
+//     return acc;
+//   }, { dueAmount: 0, dueInvoice: [], partialInvoice: [] });
+
+//   const dueSpecialDisount = await getSpecialDiscount(result.dueInvoice);
+//   const dueAmount = result.dueAmount - dueSpecialDisount;
+
+//   // partial due amount 
+//   const partialDue = await prisma.dueList.aggregate({
+//     where: {
+//       invoice: {
+//         in: result.partialInvoice
+//       }
+//     },
+//     _sum: {
+//       amount: true
+//     }
+//   })
+//   const partialDueAmount = partialDue._sum.amount;
+//   const finalDueAmount = partialDueAmount + dueAmount;
+//   return finalDueAmount;
+// }
+
+
 // cash amount calculation
+
+
 async function CashAmount(sales) {
   const result = sales.reduce((acc, item) => {
     if (item.paymentStatus === "paid") {
@@ -122,7 +156,79 @@ async function CashAmount(sales) {
   return finalPaidAmount;
 }
 
+// account status
+async function AccountStatus(dateKey,userId) {
+  const specificDate =new Date(dateKey);;
+  try {
+    // total due from due list 
+    const totalDue = await prisma.dueList.aggregate({
+        where: {
+          created_at:{
+            gte: new Date(specificDate.setHours(0, 0, 0, 0)),
+            lt: new Date(specificDate.setHours(23, 59, 59, 999))
+          },
+            customer_id: parseInt(userId)
+        },
+        _sum: {
+            amount:true
+        }
+    });
+    const totalCustomerDue = totalDue._sum.amount ||0;
 
+    // total Loan
+    const totalLoan = await prisma.customerLoan.aggregate({
+        where: {
+          created_at:{
+            gte: new Date(specificDate.setHours(0, 0, 0, 0)),
+            lt: new Date(specificDate.setHours(23, 59, 59, 999))
+          },
+            customer_id: parseInt(userId)
+        },
+        _sum: {
+            amount:true
+        }
+    });
+    const totalCustomerLoan = totalLoan._sum.amount || 0;
+
+    const customerObligations = (parseInt(totalCustomerDue) + parseInt(totalCustomerLoan));
+
+    // customer cash collect like advanced, not partial (if partial have invoice)
+    const advancedCash = await prisma.collectPayment.aggregate({
+        where: {
+          created_at:{
+            gte: new Date(specificDate.setHours(0, 0, 0, 0)),
+            lt: new Date(specificDate.setHours(23, 59, 59, 999))
+          },
+            customer_id: parseInt(userId),
+            invoice:"null",
+        },
+        _sum: {
+            amount: true
+        }
+    });
+    const totalAdvancedCash = advancedCash._sum.amount ||0;
+    
+    // ------ make status
+
+    //  Calculate balance
+    const balanceAmount = totalAdvancedCash - customerObligations;
+
+    return {
+      status: balanceAmount >= 0 ? "Balance Remaining" : "Due Balance",
+      amount: Math.abs(balanceAmount), 
+      isCredit: balanceAmount >= 0 // Boolean flag for easy checking
+    };
+   
+  } catch (error) {
+    console.error("Error in AccountStatus:", error);
+    return {
+      status: "Error",
+      amount: 0,
+      isCredit: false,
+      error: error.message
+    };
+  }
+}
 
 
 // ---------------------------------- handler section ------------------------------------
@@ -159,14 +265,18 @@ export async function GET(req, res) {
       }
       formatedData[dateKey].push(item);
     }
-  
+
+    
     let formatedDataArray = await Promise.all(Object.entries(formatedData).map(async ([dateKey, salesArray]) => ({
+      // const accountStatus = await AccountStatus(salesArray,userId)
+      // console.log(accountStatus)
       date: dateKey,
       sale: (DiscountPrice(salesArray) - await SpecialDiscount(salesArray)),
       due: await DueAmount(salesArray),
       discountedPrice: DiscountPrice(salesArray),
       specialDiscount: await SpecialDiscount(salesArray),
       cash: await CashAmount(salesArray),
+      accountStatus: await AccountStatus(dateKey,userId)|| { error: "No status returned" }
     })));
     
     
@@ -202,20 +312,85 @@ export async function GET(req, res) {
 
 // Helper function to paginate the grouped data
 const paginateGroupedData = (formatedDataArray, page, pageSize) => {
-
-  const totalRecords = formatedDataArray.length; // Get the total number of grouped entries (dates)
-
+  const totalRecords = formatedDataArray.length;
   const totalPages = Math.ceil(totalRecords / pageSize);
 
   // Get the subset of grouped data for the current page
   const paginatedGroupedData = formatedDataArray.slice(
-    (page - 1) * pageSize, // Skip records for previous pages
-    page * pageSize // Take records for the current page
+    (page - 1) * pageSize, 
+    page * pageSize
   );
 
   return {
-    paginatedData: paginatedGroupedData, // Paginated data (a slice of the full array)
+    paginatedData: paginatedGroupedData, 
     totalRecords,
     totalPages
   };
 };
+
+
+export async function Test(req, res) {
+  const { searchParams } = new URL(req.url);
+  const userId = searchParams.get("userId");
+  try {
+    // total due from due list 
+    const totalDue = await prisma.dueList.aggregate({
+        where: {
+            customer_id: parseInt(userId)
+        },
+        _sum: {
+            amount:true
+        }
+    });
+    const totalCustomerDue = totalDue._sum.amount;
+
+    // total collect for partial payment
+    const collectPayment = await prisma.collectPayment.aggregate({
+        where: {
+            customer_id: parseInt(userId)
+        },
+        _sum: {
+            amount:true
+        }
+    });
+    const totalCustomerDueCollection = collectPayment._sum.amount;
+
+    // total due from due list 
+    const totalLoan = await prisma.customerLoan.aggregate({
+        where: {
+            customer_id: parseInt(userId)
+        },
+        _sum: {
+            amount:true
+        }
+    });
+    const totalCustomerLoan = totalLoan._sum.amount || 0;
+
+    const getFromCustomerAmount = (parseInt(totalCustomerDue) + parseInt(totalCustomerLoan));
+
+    // customer cash collect like advanced, not partial (if partial have invoice)
+    const advancedCash = await prisma.collectPayment.aggregate({
+        where: {
+            customer_id: parseInt(userId),
+            invoice:"null",
+        },
+        _sum: {
+            amount: true
+        }
+    });
+    const totalAdvancedCash = advancedCash._sum.amount ||0;
+    
+    // make status
+    if(parseInt(totalAdvancedCash) > getFromCustomerAmount) {
+        return NextResponse.json({ status: "ok", data: {status: "Balance Remeang",amount:(parseInt(totalAdvancedCash) -  getFromCustomerAmount)} });
+    } else{
+        return NextResponse.json({ status: "ok", data: {status: "Due Balance",amount:(parseInt(totalAdvancedCash) -  getFromCustomerAmount)} });
+    }
+  } catch (error) {
+    console.log(error.message);
+    return NextResponse.json({
+      status: 500,
+      error: "Failed to get all categories!",
+    });
+  }
+}
