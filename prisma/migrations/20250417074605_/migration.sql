@@ -56,6 +56,7 @@ CREATE TABLE "productTransferList" (
     "perPacket" DOUBLE PRECISION,
     "totalpacket" DOUBLE PRECISION,
     "quantity" INTEGER NOT NULL,
+    "productId" INTEGER NOT NULL,
     "productName" TEXT NOT NULL,
     "note" TEXT NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -80,6 +81,7 @@ CREATE TABLE "customers" (
 -- CreateTable
 CREATE TABLE "sales" (
     "id" SERIAL NOT NULL,
+    "productId" INTEGER NOT NULL,
     "productName" TEXT NOT NULL,
     "category" "categoryType",
     "subCategory" TEXT,

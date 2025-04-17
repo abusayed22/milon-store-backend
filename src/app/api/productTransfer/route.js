@@ -139,6 +139,7 @@ export async function POST(req, res) {
           // Create the transfer
           const transferData = {
             productName: selectedProduct?.name,
+            productId: selectedProduct?.id,
             category: category,
             subCategory: subCategory,
             quantity: quantity ? parseFloat(quantity) : null, // Set as null if empty

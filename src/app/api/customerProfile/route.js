@@ -33,14 +33,16 @@ export async function GET(req, res) {
           _sum: {
             amount:true
           }
-        })
+        });
+
         // get customer total due amount
         const totalCustomerDue = await prisma.dueList.aggregate({
           where:{customer_id:Number(saleId)},
           _sum: {
             amount:true
           }
-        })
+        });
+
         const totalSaleAmount = saleAmount._sum.discountedPrice || 0;
         const remaingBalance = parseFloat(totalCustomerCollection._sum.amount) - parseFloat(totalCustomerDue._sum.amount);
         return NextResponse.json({ status: "ok", data: {totalSaleAmount,remaingBalance} })

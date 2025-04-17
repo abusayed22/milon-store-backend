@@ -3,8 +3,8 @@ generator client {
 }
 
 datasource db {
-  provider          = "postgresql"
-  url               = env("DATABASE_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
   // shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
@@ -24,7 +24,7 @@ model products {
   perPacket   Float?
   totalpacket Float?
   quantity    Int
-  note        String          
+  note        String
   created_at  DateTime         @default(now())
   updated_at  DateTime         @default(now()) @updatedAt
   unitPrice   Int
@@ -42,7 +42,7 @@ model productHistory {
   quantity    Int
   created_at  DateTime     @default(now())
   unitPrice   Int?
-  product     products     @relation(fields: [productId], references: [id],map:"productHistory_productId_fk")
+  product     products     @relation(fields: [productId], references: [id], map: "productHistory_productId_fk")
 
   @@index([productId], map: "productHistory_productId_fkey")
 }
@@ -54,8 +54,9 @@ model productTransferList {
   perPacket   Float?
   totalpacket Float?
   quantity    Int
+  productId   Int
   productName String
-  note        String        
+  note        String
   created_at  DateTime      @default(now())
   updated_at  DateTime      @default(now()) @updatedAt
 }
@@ -65,7 +66,7 @@ model customers {
   name           String
   phone          String           @unique
   address        String
-  note           String          
+  note           String
   created_at     DateTime         @default(now())
   updated_at     DateTime         @default(now()) @updatedAt
   collectPyament collectPayment[]
@@ -85,14 +86,14 @@ model sales {
   totalpacket     Float?
   customer_id     Int
   paymentStatus   paymentStatus
-  note            String       
+  note            String
   created_at      DateTime      @default(now())
   updated_at      DateTime      @default(now()) @updatedAt
   discount        Int
   discountedPrice Float
   totalPrice      Float
   invoice         String
-  customers       customers     @relation(fields: [customer_id], references: [id],map: "sales_customer_id_fk")
+  customers       customers     @relation(fields: [customer_id], references: [id], map: "sales_customer_id_fk")
 
   @@index([customer_id], map: "sales_customer_id_fkey")
 }
@@ -108,7 +109,7 @@ model specialDiscount {
 model expneses {
   id         Int      @id @unique @default(autoincrement())
   amount     Float
-  note       String  
+  note       String
   created_at DateTime @default(now())
   updated_at DateTime @default(now()) @updatedAt
 }
@@ -117,11 +118,11 @@ model collectPayment {
   id           Int       @id @unique @default(autoincrement())
   customer_id  Int
   amount       Float
-  note         String    
+  note         String
   created_at   DateTime  @default(now())
   updated_at   DateTime  @default(now()) @updatedAt
   invoice      String?
-  customerName customers @relation(fields: [customer_id], references: [id],map: "collectPayment_customer_id_fk")
+  customerName customers @relation(fields: [customer_id], references: [id], map: "collectPayment_customer_id_fk")
 
   @@index([customer_id], map: "collectPayment_customer_id_fkey_unique")
 }
@@ -130,10 +131,10 @@ model customerLoan {
   id          Int       @id @unique @default(autoincrement())
   customer_id Int
   amount      Float
-  note        String    
+  note        String
   created_at  DateTime  @default(now())
   updated_at  DateTime  @default(now()) @updatedAt
-  customer    customers @relation(fields: [customer_id], references: [id],map: "collectPayment_customer_id_fk")
+  customer    customers @relation(fields: [customer_id], references: [id], map: "collectPayment_customer_id_fk")
 
   @@index([customer_id], map: "collectPayment_customer_id_fkey")
 }
@@ -144,11 +145,11 @@ model dueList {
   subCategory     String?
   customer_id     Int
   amount          Float
-  note            String      
+  note            String
   created_at      DateTime     @default(now())
   updated_at      DateTime     @default(now()) @updatedAt
   invoice         String
-  customer        customers    @relation(fields: [customer_id], references: [id],map: "dueList_customer_id_fk")
+  customer        customers    @relation(fields: [customer_id], references: [id], map: "dueList_customer_id_fk")
 
   @@index([customer_id], map: "dueList_customer_id_fkey")
 }
