@@ -119,7 +119,6 @@ export async function GET(req, res) {
             totalpacket: true,
           },
         });
-
         const totalSalePacket = saleProductQuntity._sum.totalpacket || 0;
         const totalSaleQty = saleProductQuntity._sum.quantity || 0;
 
@@ -139,7 +138,24 @@ export async function GET(req, res) {
         const totalTransferPacket = transferProductQuntity._sum.totalpacket || 0;
         const totalTransferQty = transferProductQuntity._sum.quantity || 0;
 
-        
+
+        // total product stock by date
+        const dateByStock = await prisma.products.aggregate({
+          where: {
+            id: parseInt(product.id),
+            created_at: {
+              gte: start?.toISOString(), // Start of day in UTC
+              lte: end?.toISOString(), // End of day in UTC
+            },
+          },
+          _sum: {
+            quantity: true,
+            totalpacket: true,
+          },
+        });
+        const totalStockPacket = dateByStock._sum.totalpacket || 0;
+        const totalStockQty = dateByStock._sum.quantity || 0;
+      
 
         // Calculate the total packets added for this specific product
         const totalAddPacket = historyEntriesForProduct.reduce((sum, entry) => {
@@ -167,24 +183,25 @@ export async function GET(req, res) {
           }
         }, 0);
 
+
         // Optional: Calculate other values like total quantity, total stock, etc.
         const totalAddProductQty = historyEntriesForProduct.reduce(
           (sum, entry) => sum + (entry.quantity || 0),
           0
         );
 
-        let totalStockPacket;
-        if (product.category === "FEED") {
-          totalStockPacket = product.totalpacket || 0;
-        } else {
-          totalStockPacket = product.quantity || 0;
-        }
+        // let totalStockPacket;
+        // if (product.category === "FEED") {
+        //   totalStockPacket = product.totalpacket || 0;
+        // } else {
+        //   totalStockPacket = product.quantity || 0;
+        // }
 
-        const totalStockQty = product.quantity || 0;
+        // const totalStockQty = product.quantity || 0;
 
-        const valueStock =
-          (product.unitPrice || 0) *
-          (product.quantity || product.totalpacket || 0);
+        // const valueStock =
+        //   (product.unitPrice || 0) *
+        //   (product.quantity || product.totalpacket || 0);
 
         return {
           productName: product.name,
@@ -192,11 +209,11 @@ export async function GET(req, res) {
           subCategory: product.subCategory || "null",
           totalAddPacket,
           totalStockPacket,
+          totalStockQty,
           totalSalePacket,
           totalAddProductQty,
-          totalStockQty,
           totalSaleQty,
-          valueStock,
+          // valueStock,
           totalTransferPacket,
           totalTransferQty
           // salePacket,
