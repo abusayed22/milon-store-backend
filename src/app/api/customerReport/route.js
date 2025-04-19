@@ -234,6 +234,36 @@ async function AccountStatus(dateKey,userId) {
   }
 }
 
+// date ways dynmic aggregation
+async function dateWaysDynamic(dateKey, userId, model, conditions = {}, sumField = 'amount') {
+  const specificDate = new Date(dateKey);
+  const startDate = new Date(specificDate);
+  startDate.setHours(0, 0, 0, 0);
+  const endDate = new Date(specificDate);
+  endDate.setHours(23, 59, 59, 999);
+
+  try {
+    const total = await prisma[model].aggregate({
+      where: {
+        created_at: {
+          gte: startDate,
+          lt: endDate
+        },
+        customer_id: parseInt(userId),
+        ...conditions
+      },
+      _sum: {
+        [sumField]: true
+      }
+    });
+
+    return total._sum[sumField] || 0;
+  } catch (error) {
+    console.error(`Error in dateWaysDynamic (${model}):`, error);
+    return 0; // Return 0 instead of object for consistency
+  }
+}
+
 
 // ---------------------------------- handler section ------------------------------------
 
@@ -280,7 +310,9 @@ export async function GET(req, res) {
       discountedPrice: DiscountPrice(salesArray),
       specialDiscount: await SpecialDiscount(salesArray),
       cash: await CashAmount(salesArray),
-      accountStatus: await AccountStatus(dateKey,userId)|| { error: "No status returned" }
+      accountStatus: await AccountStatus(dateKey,userId)|| { error: "No status returned" },
+     loan: await dateWaysDynamic(dateKey, userId, "customerLoan"),
+      collection: await dateWaysDynamic(dateKey, userId, "collectPayment", { invoice: "null" }),
     })));
 
     
@@ -334,68 +366,3 @@ const paginateGroupedData = (formatedDataArray, page, pageSize) => {
 };
 
 
-export async function Test(req, res) {
-  const { searchParams } = new URL(req.url);
-  const userId = searchParams.get("userId");
-  try {
-    // total due from due list 
-    const totalDue = await prisma.dueList.aggregate({
-        where: {
-            customer_id: parseInt(userId)
-        },
-        _sum: {
-            amount:true
-        }
-    });
-    const totalCustomerDue = totalDue._sum.amount;
-
-    // total collect for partial payment
-    const collectPayment = await prisma.collectPayment.aggregate({
-        where: {
-            customer_id: parseInt(userId)
-        },
-        _sum: {
-            amount:true
-        }
-    });
-    const totalCustomerDueCollection = collectPayment._sum.amount;
-
-    // total due from due list 
-    const totalLoan = await prisma.customerLoan.aggregate({
-        where: {
-            customer_id: parseInt(userId)
-        },
-        _sum: {
-            amount:true
-        }
-    });
-    const totalCustomerLoan = totalLoan._sum.amount || 0;
-
-    const getFromCustomerAmount = (parseInt(totalCustomerDue) + parseInt(totalCustomerLoan));
-
-    // customer cash collect like advanced, not partial (if partial have invoice)
-    const advancedCash = await prisma.collectPayment.aggregate({
-        where: {
-            customer_id: parseInt(userId),
-            invoice:"null",
-        },
-        _sum: {
-            amount: true
-        }
-    });
-    const totalAdvancedCash = advancedCash._sum.amount ||0;
-    
-    // make status
-    if(parseInt(totalAdvancedCash) > getFromCustomerAmount) {
-        return NextResponse.json({ status: "ok", data: {status: "Balance Remeang",amount:(parseInt(totalAdvancedCash) -  getFromCustomerAmount)} });
-    } else{
-        return NextResponse.json({ status: "ok", data: {status: "Due Balance",amount:(parseInt(totalAdvancedCash) -  getFromCustomerAmount)} });
-    }
-  } catch (error) {
-    console.log(error.message);
-    return NextResponse.json({
-      status: 500,
-      error: "Failed to get all categories!",
-    });
-  }
-}
