@@ -158,13 +158,13 @@ async function CashAmount(sales) {
 
 // account status
 async function AccountStatus(dateKey,userId) {
-  const specificDate =new Date(dateKey);;
+  const specificDate =new Date(dateKey);
   try {
     // total due from due list 
     const totalDue = await prisma.dueList.aggregate({
         where: {
           created_at:{
-            gte: new Date(specificDate.setHours(0, 0, 0, 0)),
+            // gte: new Date(specificDate.setHours(0, 0, 0, 0)),
             lt: new Date(specificDate.setHours(23, 59, 59, 999))
           },
             customer_id: parseInt(userId)
@@ -174,12 +174,15 @@ async function AccountStatus(dateKey,userId) {
         }
     });
     const totalCustomerDue = totalDue._sum.amount ||0;
+    // console.log("start", new Date(specificDate.setHours(0, 0, 0, 0)))
+    // console.log("end",  new Date(specificDate.setHours(23, 59, 59, 999)))
+
 
     // total Loan
     const totalLoan = await prisma.customerLoan.aggregate({
         where: {
           created_at:{
-            gte: new Date(specificDate.setHours(0, 0, 0, 0)),
+            // gte: new Date(specificDate.setHours(0, 0, 0, 0)),
             lt: new Date(specificDate.setHours(23, 59, 59, 999))
           },
             customer_id: parseInt(userId)
@@ -191,12 +194,13 @@ async function AccountStatus(dateKey,userId) {
     const totalCustomerLoan = totalLoan._sum.amount || 0;
 
     const customerObligations = (parseInt(totalCustomerDue) + parseInt(totalCustomerLoan));
+    // console.log(customerObligations)
 
     // customer cash collect like advanced, not partial (if partial have invoice)
     const advancedCash = await prisma.collectPayment.aggregate({
         where: {
           created_at:{
-            gte: new Date(specificDate.setHours(0, 0, 0, 0)),
+            // gte: new Date(specificDate.setHours(0, 0, 0, 0)),
             lt: new Date(specificDate.setHours(23, 59, 59, 999))
           },
             customer_id: parseInt(userId),
@@ -278,6 +282,7 @@ export async function GET(req, res) {
       cash: await CashAmount(salesArray),
       accountStatus: await AccountStatus(dateKey,userId)|| { error: "No status returned" }
     })));
+
     
     
     // Paginate the grouped data
