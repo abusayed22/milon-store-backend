@@ -1,3 +1,4 @@
+import { localDate } from "@/lib/dateTime";
 import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
 
@@ -57,6 +58,7 @@ export async function PATCH(req, res) {
   }
 }
 
+
 // create customer
 export async function POST(req, res) {
   try {
@@ -85,6 +87,7 @@ export async function POST(req, res) {
           phone: reqData.phone,
           address: reqData.address,
           note: reqData.note || "empty",
+          created_at: localDate()
         },
       });
 

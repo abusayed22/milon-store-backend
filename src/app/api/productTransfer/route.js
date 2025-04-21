@@ -1,3 +1,4 @@
+import { localDate } from "@/lib/dateTime";
 import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
 
@@ -146,6 +147,7 @@ export async function POST(req, res) {
             perPacket: perPacket ? parseFloat(perPacket) : null, // Set as null if empty
             totalpacket: totalpacket ? parseFloat(totalpacket) : null, // Set as null if empty
             note: note || "",
+            created_at: localDate()
           };
 
           const newTransfer = await prisma.productTransferList.create({

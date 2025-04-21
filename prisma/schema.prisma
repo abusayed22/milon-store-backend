@@ -25,8 +25,8 @@ model products {
   totalpacket Float?
   quantity    Int
   note        String
-  created_at  DateTime         @default(now())
-  updated_at  DateTime         @default(now()) @updatedAt
+  created_at  DateTime         
+  updated_at  DateTime         @updatedAt
   unitPrice   Int
   stock       Boolean          @default(true)
   history     productHistory[]

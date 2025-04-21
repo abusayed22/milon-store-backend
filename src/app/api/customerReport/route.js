@@ -91,40 +91,6 @@ async function DueAmount(sales) {
   return finalDueAmount;
 }
 
-// date ways customer account status TODO:
-// async function AccountStatus(sales) {
-//   const result = sales.reduce((acc, item) => {
-//     if (item.paymentStatus === "due") { //TODO:
-//       acc.dueAmount += item.discountedPrice
-//       acc.dueInvoice.push(item.invoice)
-//     } else if (item.paymentStatus === "partial") {
-//       acc.partialInvoice.push(item.invoice)
-//     }
-//     return acc;
-//   }, { dueAmount: 0, dueInvoice: [], partialInvoice: [] });
-
-//   const dueSpecialDisount = await getSpecialDiscount(result.dueInvoice);
-//   const dueAmount = result.dueAmount - dueSpecialDisount;
-
-//   // partial due amount 
-//   const partialDue = await prisma.dueList.aggregate({
-//     where: {
-//       invoice: {
-//         in: result.partialInvoice
-//       }
-//     },
-//     _sum: {
-//       amount: true
-//     }
-//   })
-//   const partialDueAmount = partialDue._sum.amount;
-//   const finalDueAmount = partialDueAmount + dueAmount;
-//   return finalDueAmount;
-// }
-
-
-// cash amount calculation
-
 
 async function CashAmount(sales) {
   const result = sales.reduce((acc, item) => {
@@ -174,10 +140,7 @@ async function AccountStatus(dateKey,userId) {
         }
     });
     const totalCustomerDue = totalDue._sum.amount ||0;
-    // console.log("start", new Date(specificDate.setHours(0, 0, 0, 0)))
-    // console.log("end",  new Date(specificDate.setHours(23, 59, 59, 999)))
-
-
+   
     // total Loan
     const totalLoan = await prisma.customerLoan.aggregate({
         where: {

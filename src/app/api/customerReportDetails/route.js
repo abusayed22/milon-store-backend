@@ -12,21 +12,48 @@ const parseCompactDate = (compactDate) => {
   return `${year}-${month}-${day}`;
 };
 
-// Helper function for pagination
-const paginateResults = (data, page, pageSize) => {
-  const totalRecords = data.length;
-  const totalPages = Math.ceil(totalRecords / pageSize);
 
-  const startIndex = (page - 1) * pageSize;
-  const endIndex = startIndex + pageSize;
+// Utility function to calculate the total special discount for given invoices
+async function getTotalSpecialDiscount(invoices) {
+  const specialDiscountAmount = await prisma.specialDiscount.aggregate({
+    where: {
+      invoice: {
+        in: invoices,
+      },
+    },
+    _sum: {
+      amount: true,
+    },
+  });
+  return specialDiscountAmount._sum.amount || 0;
+}
 
-  return {
-    paginatedData: data.slice(startIndex, endIndex),
-    totalRecords,
-    totalPages,
-  };
+// partial invoices with status total amount
+const byPartialInvoices = async (invoiceModel, invoices) => {
+  if (!Array.isArray(invoices) || invoices.length === 0) {
+    // throw new Error("Invoices must be a non-empty array");
+  }
+
+  try {
+    const partialAmount = await prisma[invoiceModel].aggregate({
+      where: {
+        invoice: {
+          in: invoices,
+        },
+      },
+      _sum: {
+        amount: true,
+      },
+    });
+
+    return partialAmount._sum.amount || 0; 
+  } catch (error) {
+    console.error("Error fetching partial invoices:", error);
+    throw new Error("Failed to fetch partial invoices");
+  }
 };
 
+//     --------------------------------------------------------------------------------------
 // API handler function
 export async function GET(req, res) {
   const { searchParams } = new URL(req.url);
@@ -52,37 +79,92 @@ export async function GET(req, res) {
       return utcDate;
     };
 
-    const parsedDate = parseCompactDate(dateData); // Parse the date
+    const parsedDate = parseCompactDate(dateData); 
 
     // Query sales data based on the date range
-    const data = await prisma.sales.findMany({
+    const salesData = await prisma.sales.findMany({
       where: {
         customer_id: parseInt(userId),
         created_at: {
-          gte: parsedDate, // Start of day in UTC
-          lt: new Date(parsedDate.getTime() + 24 * 60 * 60 * 1000), // To fetch data for the whole day
+          gte: parsedDate, 
+          lt: new Date(parsedDate.getTime() + 24 * 60 * 60 * 1000), 
         },
       },
+      include:{
+        customers:true
+      }
     });
 
-    // Paginate the results
-    const { paginatedData, totalRecords, totalPages } = paginateResults(
-      data,
-      page,
-      pageSize
-    );
-   
+    let totalSales = 0;
+    let totalDue = 0;
+    let totalCash = 0;
+    let partialPaymentProcessed = false;
 
-    // Return the paginated response
-    return NextResponse.json({
-      status: "ok",
-      data: paginatedData,
-      pagination: {
-        currentPage: page,
-        pageSize,
-        totalRecords,
-        totalPages,
-      },
+      // partial invoices
+      const partialInovices = salesData.filter((obj) => obj.paymentStatus === "partial").map((obj) => obj.invoice);
+      
+      // customer invoices
+      const customerInvoices = salesData.map((obj) => obj.invoice);
+
+      // This customer total special Discount
+      const totalSpecialDiscount = await getTotalSpecialDiscount(
+        customerInvoices
+      );
+    
+      // partial cash and due amount
+      const partialDueAmount = await byPartialInvoices(
+        "dueList",
+        partialInovices
+      );
+      const partialCashAmount = await byPartialInvoices(
+        "collectPayment",
+        partialInovices
+      );
+
+
+      const data = salesData.forEach((s) => {
+        totalSales += s.discountedPrice;
+
+        if(s.paymentStatus === "due"){
+          totalDue += s.discountedPrice
+        } else if(s.paymentStatus==="paid"){
+          totalCash+= s.discountedPrice
+        }else if(s.paymentStatus==="partial"){
+          if(!partialPaymentProcessed){
+            totalDue += partialDueAmount
+            totalCash += partialCashAmount
+          }
+          partialPaymentProcessed = true;
+        }
+      })
+
+      // total page calculation
+      const totalCount = await prisma.sales.count({
+        where: {
+          customer_id: parseInt(userId),
+          created_at: {
+            gte: parsedDate, 
+            lt: new Date(parsedDate.getTime() + 24 * 60 * 60 * 1000), 
+          },
+        },
+      });
+      const totalPage = Math.ceil(totalCount / pageSize);
+      
+    
+
+      return NextResponse.json({
+        status: "ok",
+        data: salesData,
+        totals: {
+          totalSales: totalSales - totalSpecialDiscount,
+          totalCash,
+          totalDue,
+        },
+        pagination: {
+          currentPage: page,
+          pageSize: pageSize,
+          totalPage,
+        },
     });
   } catch (error) {
     console.error("Error fetching sales data:", error);

@@ -187,10 +187,27 @@ export async function GET(req, res) {
           totalSale: 0,
           totalCash: 0,
           totalDue: 0,
-          discountApplied: false, // initiate for prvent double counting
-          partialPaymentProcessed: false, // initiate for prvent double counting
+          totalCollection:0,
+          discountApplied: false,
+          partialPaymentProcessed: false,
         };
       }
+
+     // Calculate collection for this customer (only once per customer)
+    const totalCollectionPayment = await prisma.collectPayment.aggregate({
+      where: {
+        customer_id: customerId,
+        created_at: {
+          gte: start?.toISOString(),
+          lte: end?.toISOString()
+        },
+        invoice:"null"
+      },
+      _sum: {
+        amount: true
+      }
+    });
+    acc[customerId].totalCollection = totalCollectionPayment._sum.amount || 0;
 
       // Customer invoices grouped by payment status
       const customerSales = salesData.filter(
@@ -210,11 +227,11 @@ export async function GET(req, res) {
       const cashTotalSpecialDiscountAmount =
         cashInvoices.length > 0
           ? await getTotalSpecialDiscount(cashInvoices)
-          : 0; // Assign 0 if cashInvoices is empty
-      // console.log("specialDiscount", cashTotalSpecialDiscountAmount)
+          : 0;
 
       // Update total sales, cash, and due
       acc[customerId].totalSale += sale.discountedPrice;
+      
       if (sale.paymentStatus === "due") {
         acc[customerId].totalDue += sale.discountedPrice;
         totalDue += sale.discountedPrice;
@@ -256,9 +273,8 @@ export async function GET(req, res) {
       page * limit
     );
 
-    const totalRecords = paginationSales?.length; // Total number of grouped customers
+    const totalRecords = paginationSales?.length;
     const totalPages = Math.ceil(totalRecords / limit);
-    // console.log(totalPages)
 
     return NextResponse.json({
       status: "ok",

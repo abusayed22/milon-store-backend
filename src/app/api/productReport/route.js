@@ -1,3 +1,4 @@
+import { localDate } from "@/lib/dateTime";
 import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
 
@@ -68,8 +69,8 @@ export async function GET(req, res) {
     const productHistory = await prisma.productHistory.findMany({
       where: {
         created_at: {
-          gte: start?.toISOString(), // Start of day in UTC
-          lte: end?.toISOString(), // End of day in UTC
+          gte: start?.toISOString(),
+          lte: end?.toISOString(),
         },
       },
       include: {
@@ -138,13 +139,13 @@ export async function GET(req, res) {
         const totalTransferPacket = transferProductQuntity._sum.totalpacket || 0;
         const totalTransferQty = transferProductQuntity._sum.quantity || 0;
 
-
+  
         // total product stock by date
         const dateByStock = await prisma.products.aggregate({
           where: {
             id: parseInt(product.id),
             created_at: {
-              gte: start?.toISOString(), // Start of day in UTC
+              // gte: start?.toISOString(), // Start of day in UTC
               lte: end?.toISOString(), // End of day in UTC
             },
           },
@@ -189,19 +190,6 @@ export async function GET(req, res) {
           (sum, entry) => sum + (entry.quantity || 0),
           0
         );
-
-        // let totalStockPacket;
-        // if (product.category === "FEED") {
-        //   totalStockPacket = product.totalpacket || 0;
-        // } else {
-        //   totalStockPacket = product.quantity || 0;
-        // }
-
-        // const totalStockQty = product.quantity || 0;
-
-        // const valueStock =
-        //   (product.unitPrice || 0) *
-        //   (product.quantity || product.totalpacket || 0);
 
         return {
           productName: product.name,

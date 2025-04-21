@@ -1,3 +1,4 @@
+import { localDate } from "@/lib/dateTime";
 import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
 
@@ -41,6 +42,7 @@ export async function POST(req, res) {
         unitPrice: parseInt(unitPrice) || 0,
         note: note || "null",
         stock: true,
+        created_at: localDate(),
         history: {
           create: {
             name: name,
@@ -48,6 +50,8 @@ export async function POST(req, res) {
             subCategory: subCategory || null,
             totalpacket: totalpackte ? parseFloat(totalpackte) : null, 
             quantity:parseInt(quantity),
+            created_at:localDate(),
+            // updated_at:new Date(),
             // unitPrice: unitPrice ? parseInt(unitPrice) : 0,
           },
         },

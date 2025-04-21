@@ -2,6 +2,7 @@ import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
 // import { DateTime } from "@prisma/client";
 import { DateTime } from "luxon";
+import { localDate } from "@/lib/dateTime";
 
 const prisma = new PrismaClient();
 
@@ -510,6 +511,7 @@ export async function POST(req, res) {
                 paymentStatus,
                 invoice: invoiceId,
                 note: note || "",
+                created_at:localDate()
               },
             });
 
@@ -531,6 +533,7 @@ export async function POST(req, res) {
             data: {
               amount: parseFloat(sepcialDiscount),
               invoice: invoiceId,
+              created_at: localDate()
             },
           });
         }
@@ -543,6 +546,7 @@ export async function POST(req, res) {
               amount: parseFloat(cash),
               invoice: invoiceId,
               note: note || "",
+              created_at: localDate()
             },
           });
 
@@ -554,6 +558,7 @@ export async function POST(req, res) {
               amount: parseFloat(due),
               invoice: invoiceId,
               note: note || "",
+              created_at: localDate()
             },
           });
         } else if (paymentStatus === "due") {
@@ -568,6 +573,7 @@ export async function POST(req, res) {
               ),
               invoice: invoiceId,
               note: note || "",
+              created_at: localDate()
             },
           });
         }

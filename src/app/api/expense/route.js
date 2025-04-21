@@ -1,3 +1,4 @@
+import { localDate } from "@/lib/dateTime";
 import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
 
@@ -79,6 +80,7 @@ export async function POST(req, res) {
       data: {
         amount: parseFloat(amount),
         note: note || "null",
+        created_at:localDate()
       },
     });
     return NextResponse.json({ status: "ok", data: expense });

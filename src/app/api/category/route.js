@@ -22,7 +22,7 @@ export async function POST(req, res) {
     const reqData = await req.json();
     try {
       const category =  await prisma.subCategory.create({
-        data: reqData
+        data: reqData,
       });
       return NextResponse.json({ status: "ok", data: category });
     } catch (error) {
