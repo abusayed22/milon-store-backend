@@ -27,7 +27,7 @@ async function getSpecialDiscount(invoices) {
             },
         },
     });
-    return result._sum.amount;
+    return parseFloat(result._sum.amount);
 }
 
 async function SpecialDiscount(saleData, stype = false) {
@@ -54,35 +54,15 @@ async function SpecialDiscount(saleData, stype = false) {
             },
         },
     });
-    return result._sum.amount;
+    return parseFloat(result._sum.amount);
 }
-
-// async function CashAmount(saleData) {
-//     let paymentStatusSummary = saleData.reduce((acc, item) => {
-//         if (item.paymentStatus === 'paid') {
-//             acc.paid += item.discountedPrice;
-//             acc.paidInvoices.push(item.invoice);
-//         } else if (item.paymentStatus === 'partial') {
-//             acc.partial += item.discountedPrice;
-//             acc.partialInvoices.push(item.invoice);
-//         }
-//         return acc;
-//     }, { paid: 0, partial: 0, paidInvoices: [], partialInvoices: [] });
-//     const paidDiscountAmount = await SpecialDiscount(paymentStatusSummary.paidInvoices, true);
-//     const partialInvoiceAmount = await SpecialDiscount(paymentStatusSummary.partialInvoices, true);
-
-//     const formateData = {
-//         paid: paymentStatusSummary.paid, partial: paymentStatusSummary.partial, paidInvoices: paidDiscountAmount, partialInvoices: partialInvoiceAmount
-//     }
-//     return formateData;
-// }
 
 
 // due amount calculation
 async function DueAmount(sales) {
     const result = sales.reduce((acc, item) => {
         if (item.paymentStatus === "due") {
-            acc.dueAmount += item.discountedPrice
+            acc.dueAmount += parseFloat(item.discountedPrice)
             acc.dueInvoice.push(item.invoice)
         } else if (item.paymentStatus === "partial") {
             acc.partialInvoice.push(item.invoice)
@@ -91,7 +71,7 @@ async function DueAmount(sales) {
     }, { dueAmount: 0, dueInvoice: [], partialInvoice: [] });
 
     const dueSpecialDisount = await getSpecialDiscount(result.dueInvoice);
-    const dueAmount = result.dueAmount - dueSpecialDisount;
+    const dueAmount = parseFloat(result.dueAmount) - dueSpecialDisount;
 
     // partial due amount 
     const partialDue = await prisma.dueList.aggregate({
@@ -104,7 +84,7 @@ async function DueAmount(sales) {
             amount: true
         }
     })
-    const partialDueAmount = partialDue._sum.amount;
+    const partialDueAmount = parseFloat(partialDue._sum.amount);
     const finalDueAmount = partialDueAmount + dueAmount;
     return finalDueAmount;
 }
@@ -113,7 +93,7 @@ async function DueAmount(sales) {
 async function CashAmount(sales) {
     const result = sales.reduce((acc, item) => {
         if (item.paymentStatus === "paid") {
-            acc.paidAmount += item.discountedPrice
+            acc.paidAmount += parseFloat(item.discountedPrice)
             acc.paidInvoice.push(item.invoice)
         } else if (item.paymentStatus === "partial") {
             acc.partialInvoice.push(item.invoice)
@@ -122,7 +102,7 @@ async function CashAmount(sales) {
     }, { paidAmount: 0, paidInvoice: [], partialInvoice: [] });
 
     const paidSpecialDisount = await getSpecialDiscount(result.paidInvoice);
-    const paidAmount = result.paidAmount - paidSpecialDisount;
+    const paidAmount = parseFloat(result.paidAmount) - paidSpecialDisount;
 
     // partial paid amount 
     const partialPaid = await prisma.collectPayment.aggregate({
@@ -135,7 +115,7 @@ async function CashAmount(sales) {
             amount: true
         }
     })
-    const partialPaidAmount = partialPaid._sum.amount;
+    const partialPaidAmount = parseFloat(partialPaid._sum.amount);
     const finalPaidAmount = partialPaidAmount + paidAmount;
     return finalPaidAmount;
 }

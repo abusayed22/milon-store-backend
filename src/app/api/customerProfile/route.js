@@ -29,7 +29,7 @@ export async function GET(req, res) {
 
         // get customer total collectPayment amount
         const totalCustomerCollection = await prisma.collectPayment.aggregate({
-          where:{customer_id:Number(saleId),invoice:"null"},
+          where:{customer_id:parseInt(saleId),invoice:"null"},
           _sum: {
             amount:true
           }
@@ -37,13 +37,13 @@ export async function GET(req, res) {
 
         // get customer total due amount
         const totalCustomerDue = await prisma.dueList.aggregate({
-          where:{customer_id:Number(saleId)},
+          where:{customer_id:parseInt(saleId)},
           _sum: {
             amount:true
           }
         });
 
-        const totalSaleAmount = saleAmount._sum.discountedPrice || 0;
+        const totalSaleAmount = parseFloat(saleAmount._sum.discountedPrice || 0);
         const remaingBalance = parseFloat(totalCustomerCollection._sum.amount) - parseFloat(totalCustomerDue._sum.amount);
         return NextResponse.json({ status: "ok", data: {totalSaleAmount,remaingBalance} })
       }

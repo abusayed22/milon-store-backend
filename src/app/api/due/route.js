@@ -28,7 +28,6 @@ export async function GET(req) {
         //   customer: true, // Include related customer data if needed
         // },
       });
-      console.log( dueList)
   
       // Return the filtered due list data
       return NextResponse.json({

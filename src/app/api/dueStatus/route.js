@@ -19,7 +19,7 @@ export async function GET(req, res) {
             amount:true
         }
     });
-    const totalCustomerDue = totalDue._sum.amount;
+    const totalCustomerDue = parseFloat(totalDue._sum.amount);
 
     // total collect for partial payment
     const collectPayment = await prisma.collectPayment.aggregate({
@@ -30,7 +30,7 @@ export async function GET(req, res) {
             amount:true
         }
     });
-    const totalCustomerDueCollection = collectPayment._sum.amount;
+    const totalCustomerDueCollection = parseFloat(collectPayment._sum.amount);
 
     // total due from due list 
     const totalLoan = await prisma.customerLoan.aggregate({
@@ -41,9 +41,9 @@ export async function GET(req, res) {
             amount:true
         }
     });
-    const totalCustomerLoan = totalLoan._sum.amount || 0;
+    const totalCustomerLoan = parseFloat(totalLoan._sum.amount || 0);
 
-    const getFromCustomerAmount = (parseInt(totalCustomerDue) + parseInt(totalCustomerLoan));
+    const getFromCustomerAmount = (totalCustomerDue + totalCustomerLoan);
 
     // customer cash collect like advanced, not partial (if partial have invoice)
     const advancedCash = await prisma.collectPayment.aggregate({
@@ -55,7 +55,7 @@ export async function GET(req, res) {
             amount: true
         }
     });
-    const totalAdvancedCash = advancedCash._sum.amount ||0;
+    const totalAdvancedCash = parseFloat(advancedCash._sum.amount ||0);
     
     // make status
     if(parseInt(totalAdvancedCash) > getFromCustomerAmount) {

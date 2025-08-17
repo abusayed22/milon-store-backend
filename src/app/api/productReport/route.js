@@ -120,8 +120,8 @@ export async function GET(req, res) {
             totalpacket: true,
           },
         });
-        const totalSalePacket = saleProductQuntity._sum.totalpacket || 0;
-        const totalSaleQty = saleProductQuntity._sum.quantity || 0;
+        const totalSalePacket = parseFloat( saleProductQuntity._sum.totalpacket || 0);
+        const totalSaleQty = parseFloat(saleProductQuntity._sum.quantity || 0);
 
         const transferProductQuntity = await prisma.productTransferList.aggregate({
           where: {
@@ -136,8 +136,8 @@ export async function GET(req, res) {
             totalpacket: true,
           },
         });
-        const totalTransferPacket = transferProductQuntity._sum.totalpacket || 0;
-        const totalTransferQty = transferProductQuntity._sum.quantity || 0;
+        const totalTransferPacket = parseFloat(transferProductQuntity._sum.totalpacket || 0);
+        const totalTransferQty = parseFloat(transferProductQuntity._sum.quantity || 0);
 
   
         // total product stock by date
@@ -154,14 +154,14 @@ export async function GET(req, res) {
             totalpacket: true,
           },
         });
-        const totalStockPacket = dateByStock._sum.totalpacket || 0;
-        const totalStockQty = dateByStock._sum.quantity || 0;
+        const totalStockPacket = parseFloat(dateByStock._sum.totalpacket || 0);
+        const totalStockQty = parseFloat(dateByStock._sum.quantity || 0);
       
 
         // Calculate the total packets added for this specific product
         const totalAddPacket = historyEntriesForProduct.reduce((sum, entry) => {
-          const totalpacketValue = Number(entry.totalpacket);
-          const totalQuantityValue = Number(entry.quantity);
+          const totalpacketValue = parseFloat(entry.totalpacket);
+          const totalQuantityValue = parseFloat(entry.quantity);
 
           // Check feed and other
           if (product.category === "FEED") {

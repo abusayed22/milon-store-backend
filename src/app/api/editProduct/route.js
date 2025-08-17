@@ -55,14 +55,13 @@ export async function POST(req, res) {
 
     const id =  reqData.id;
     const price =  reqData.unitPrice;
-    console.log(price)
 
     const updatedPrice = await prisma.products.update({
         where: {
             id: parseInt(id)
         },
         data: {
-            unitPrice: parseInt(price)
+            unitPrice: parseFloat(price)
         }
     })   
     return NextResponse.json({status: 'ok',data:updatedPrice}) 

@@ -32,7 +32,7 @@ export async function GET(req) {
           amount: true,
         },
       });
-      const totalSpecialDiscount = totalSpecialDiscountAmount._sum.amount
+      const totalSpecialDiscount = parseFloat(totalSpecialDiscountAmount._sum.amount)
 
       // -------------  Feed ----------
       // Get today's total amount and quantity for "FEED" category
@@ -52,7 +52,7 @@ export async function GET(req) {
 
       const feedSalesQuantity = feedSales._sum.quantity || 0;
       // net feed sales amount
-      const feedSalesAmount = feedSales._sum.discountedPrice;
+      const feedSalesAmount = parseFloat(feedSales._sum.discountedPrice);
 
       // -------------  Medicne ----------
       // Get today's total amount and quantity for "MEDICINE" category
@@ -70,7 +70,7 @@ export async function GET(req) {
         },
       });
 
-      const medicineSalesAmount = medicineSales._sum.discountedPrice;
+      const medicineSalesAmount = parseFloat(medicineSales._sum.discountedPrice);
       const medicineSalesQuantity = medicineSales._sum.quantity || 0;
 
       // ----------- Grocery ---------
@@ -89,7 +89,7 @@ export async function GET(req) {
         },
       });
 
-      const grocerySalesAmount = grocerySales._sum.discountedPrice;
+      const grocerySalesAmount = parseFloat(grocerySales._sum.discountedPrice);
       const grocerySalesQuantity = grocerySales._sum.quantity || 0;
 
       // Return the aggregated results
@@ -144,8 +144,8 @@ export async function GET(req) {
           },
         });
         const totalSalesAmount =
-          todayTotalSalesAmount._sum.discountedPrice -
-          totalSpecialDiscount._sum.amount;
+          parseFloat(todayTotalSalesAmount._sum.discountedPrice) -
+          parseFloat(totalSpecialDiscount._sum.amount);
 
         // Calculate total expenses for today
         const totalExpenses = await prisma.expneses.aggregate({
@@ -159,7 +159,7 @@ export async function GET(req) {
             amount: true,
           },
         });
-        const totalExpensesAmount = totalExpenses._sum.amount || 0;
+        const totalExpensesAmount = parseFloat(totalExpenses._sum.amount || 0);
 
         // today total customer Loan
         const todayCustomerLoan = await prisma.customerLoan.aggregate({
@@ -173,7 +173,7 @@ export async function GET(req) {
             amount:true
           }
         });
-        const todayCustomerLoanAmount = todayCustomerLoan._sum.amount;
+        const todayCustomerLoanAmount = parseFloat(todayCustomerLoan._sum.amount);
 
 
         // Total collect payment
@@ -188,14 +188,14 @@ export async function GET(req) {
             amount: true,
           },
         });
-        const totalCollectedAmount = totalCollectedPayment._sum.amount || 0;
+        const totalCollectedAmount = parseFloat(totalCollectedPayment._sum.amount || 0);
 
         // today total collection amount 
         // const today
 
         // Calculate available cash
         const availableCash =
-          (totalSalesAmount + totalCollectedAmount) - (totalExpensesAmount + todayCustomerLoanAmount);
+          (parseFloat(totalSalesAmount) + parseFloat(totalCollectedAmount)) - (parseFloat(totalExpensesAmount) + parseFloat(todayCustomerLoanAmount));
 
         return NextResponse.json({
           status: "ok",
@@ -232,7 +232,7 @@ export async function GET(req) {
             discountedPrice: true,
           },
         });
-        const totalPaidSalesAmount = todayTotalSales._sum.discountedPrice;
+        const totalPaidSalesAmount = parseFloat(todayTotalSales._sum.discountedPrice);
         
         const paidSaleSpecialDiscount = await prisma.specialDiscount.aggregate({
           where: {
@@ -244,7 +244,7 @@ export async function GET(req) {
             amount: true
           }
         })
-        const paidSaleSpecialdiscountAmount = paidSaleSpecialDiscount._sum.amount || 0;
+        const paidSaleSpecialdiscountAmount = parseFloat(paidSaleSpecialDiscount._sum.amount || 0);
 
 
 
@@ -254,7 +254,7 @@ export async function GET(req) {
             amount: true,
           },
         });
-        const totalExpensesAmount = totalExpenses._sum.amount || 0;
+        const totalExpensesAmount = parseFloat(totalExpenses._sum.amount || 0);
 
         // Total collect payment
         const totalCollectedPayment = await prisma.collectPayment.aggregate({
@@ -262,34 +262,19 @@ export async function GET(req) {
             amount: true,
           },
         });
-        const totalCollectedAmount = totalCollectedPayment._sum.amount || 0;
+        const totalCollectedAmount = parseFloat(totalCollectedPayment._sum.amount || 0);
 
         const totalCustomerLoan = await prisma.customerLoan.aggregate({
           _sum: {
             amount:true
           }
         });
-        const totalCustomerLoanAmount = totalCustomerLoan._sum.amount;
-        // console.log("loan", totalCustomerLoanAmount)
-        // console.log("paidSaledis",paidSaleSpecialdiscountAmount)
-        // console.log("collect",totalCollectedAmount)
-        // console.log("loan",totalCustomerLoanAmount)
-        // console.log("expense",totalExpensesAmount)
-
-
+        const totalCustomerLoanAmount = parseFloat(totalCustomerLoan._sum.amount);
+        
         // Calculate available cash
         const availableCash = ((((totalPaidSalesAmount - paidSaleSpecialdiscountAmount) + totalCollectedAmount) - totalCustomerLoanAmount) - totalExpensesAmount);
         
         
-        //((((totalSalesAmount- totalSpecialDiscount._sum.amount)+totalCollectedAmount) - totalCustomerLoan ) - totalExpensesAmount ) -
-          // console.log("sale" ,totalSalesAmount)
-          // console.log("collect" ,totalCollectedAmount)
-          // console.log("expense" ,totalExpensesAmount)
-          // console.log("loan" ,totalCustomerLoanAmount)
-          // console.log("sp disc" ,totalSpecialDiscount._sum.amount);
-          // console.log("amount" ,availableCash);
-
-
         return NextResponse.json({
           status: "ok",
           availableCash,

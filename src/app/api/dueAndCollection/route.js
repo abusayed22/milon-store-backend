@@ -32,7 +32,7 @@ export const GET = async (req) => {
     const totalCustomerLoan = totalLoan._sum.amount || 0;
 
     const getFromCustomerAmount =
-      parseInt(totalCustomerDue) + parseInt(totalCustomerLoan);
+      parseFloat(totalCustomerDue) + parseFloat(totalCustomerLoan);
 
     // customer cash collect like advanced, not partial (if partial have invoice)
     const advancedCash = await prisma.collectPayment.aggregate({
@@ -47,7 +47,7 @@ export const GET = async (req) => {
     const totalAdvancedCash = advancedCash._sum.amount || 0;
 
     const netDue = Math.abs(
-      parseInt(totalAdvancedCash) - parseInt(getFromCustomerAmount)
+      parseFloat(totalAdvancedCash) - parseFloat(getFromCustomerAmount)
     );
 
     // Respond with the calculated data

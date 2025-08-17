@@ -25,7 +25,7 @@ async function getTotalSpecialDiscount(invoices) {
       amount: true,
     },
   });
-  return specialDiscountAmount._sum.amount || 0;
+  return parseFloat(specialDiscountAmount._sum.amount || 0);
 }
 
 // partial invoices with status total amount
@@ -46,7 +46,7 @@ const byPartialInvoices = async (invoiceModel, invoices) => {
       },
     });
 
-    return partialAmount._sum.amount || 0; 
+    return parseFloat(partialAmount._sum.amount || 0); 
   } catch (error) {
     console.error("Error fetching partial invoices:", error);
     throw new Error("Failed to fetch partial invoices");
@@ -131,8 +131,8 @@ export async function GET(req, res) {
           totalCash+= s.discountedPrice
         }else if(s.paymentStatus==="partial"){
           if(!partialPaymentProcessed){
-            totalDue += partialDueAmount
-            totalCash += partialCashAmount
+            totalDue += parseFloat(partialDueAmount)
+            totalCash += parseFloat(partialCashAmount)
           }
           partialPaymentProcessed = true;
         }

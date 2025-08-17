@@ -38,9 +38,9 @@ export async function POST(req, res) {
         subCategory: subCategory || null,
         perPacket: perPackte ? parseFloat(perPackte) : null,// Corrected from `perPackte` to `perPacket`
         totalpacket: totalpackte ? parseFloat(totalpackte) : null, 
-        quantity: parseInt(quantity),
-        unitPrice: parseInt(unitPrice) || 0,
-        note: note || "null",
+        quantity: parseFloat(quantity),
+        unitPrice: parseFloat(unitPrice) || 0,
+        note: note || "",
         stock: true,
         created_at: localDate(),
         history: {
@@ -49,7 +49,7 @@ export async function POST(req, res) {
             category: category || null,
             subCategory: subCategory || null,
             totalpacket: totalpackte ? parseFloat(totalpackte) : null, 
-            quantity:parseInt(quantity),
+            quantity:parseFloat(quantity),
             created_at:localDate(),
             // updated_at:new Date(),
             // unitPrice: unitPrice ? parseInt(unitPrice) : 0,
@@ -81,7 +81,7 @@ export async function PUT(req, res) {
           where: { id },
           data: {
               totalpacket: parseFloat(existingProduct.totalpacket) + (parseFloat(totalpackte) || 0),
-              quantity: parseInt(existingProduct.quantity) + (parseInt(quantity) || 0),
+              quantity: parseFloat(existingProduct.quantity) + (parseFloat(quantity) || 0),
               perPacket: parseFloat(perPackte) || parseFloat(existingProduct.perPacket),
               unitPrice: parseFloat(unitPrice) || existingProduct.unitPrice,
               stock: true,
@@ -92,8 +92,8 @@ export async function PUT(req, res) {
                   category: category,
                   subCategory:subCategory || null,
                   totalpacket: parseFloat(totalpackte),
-                  quantity:parseInt(quantity),
-                  unitPrice: unitPrice ? parseInt(unitPrice) : null
+                  quantity:parseFloat(quantity),
+                  unitPrice: unitPrice ? parseFloat(unitPrice) : null
                 }
               },
           },

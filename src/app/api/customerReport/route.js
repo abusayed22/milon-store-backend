@@ -9,7 +9,7 @@ const prisma = new PrismaClient();
 
 function DiscountPrice(saleData) {
   return saleData.reduce((sum, item) => {
-    return sum + (item.discountedPrice || 0); // Ensure there's no undefined or null value
+    return sum + parseFloat(item.discountedPrice || 0); // Ensure there's no undefined or null value
   }, 0);
 }
 
@@ -30,7 +30,7 @@ async function getSpecialDiscount(invoices) {
       },
     },
   });
-  return result._sum.amount;
+  return parseFloat(result._sum.amount);
 }
 
 async function SpecialDiscount(saleData, stype = false) {
@@ -57,14 +57,14 @@ async function SpecialDiscount(saleData, stype = false) {
       },
     },
   });
-  return result._sum.amount;
+  return parseFloat(result._sum.amount);
 }
 
 
 async function DueAmount(sales) {
   const result = sales.reduce((acc, item) => {
     if (item.paymentStatus === "due") {
-      acc.dueAmount += item.discountedPrice
+      acc.dueAmount += parseFloat(item.discountedPrice)
       acc.dueInvoice.push(item.invoice)
     } else if (item.paymentStatus === "partial") {
       acc.partialInvoice.push(item.invoice)
@@ -73,7 +73,7 @@ async function DueAmount(sales) {
   }, { dueAmount: 0, dueInvoice: [], partialInvoice: [] });
 
   const dueSpecialDisount = await getSpecialDiscount(result.dueInvoice);
-  const dueAmount = result.dueAmount - dueSpecialDisount;
+  const dueAmount = parseFloat(result.dueAmount) - parseFloat(dueSpecialDisount);
 
   // partial due amount 
   const partialDue = await prisma.dueList.aggregate({
@@ -86,7 +86,7 @@ async function DueAmount(sales) {
       amount: true
     }
   })
-  const partialDueAmount = partialDue._sum.amount;
+  const partialDueAmount = parseFloat(partialDue._sum.amount);
   const finalDueAmount = partialDueAmount + dueAmount;
   return finalDueAmount;
 }
@@ -95,7 +95,7 @@ async function DueAmount(sales) {
 async function CashAmount(sales) {
   const result = sales.reduce((acc, item) => {
     if (item.paymentStatus === "paid") {
-      acc.paidAmount += item.discountedPrice
+      acc.paidAmount += parseFloat(item.discountedPrice)
       acc.paidInvoice.push(item.invoice)
     } else if (item.paymentStatus === "partial") {
       acc.partialInvoice.push(item.invoice)
@@ -104,7 +104,7 @@ async function CashAmount(sales) {
   }, { paidAmount: 0, paidInvoice: [], partialInvoice: [] });
 
   const paidSpecialDisount = await getSpecialDiscount(result.paidInvoice);
-  const paidAmount = result.paidAmount - paidSpecialDisount;
+  const paidAmount = parseFloat(result.paidAmount) - paidSpecialDisount;
 
   // partial paid amount 
   const partialPaid = await prisma.collectPayment.aggregate({
@@ -117,7 +117,7 @@ async function CashAmount(sales) {
       amount: true
     }
   })
-  const partialPaidAmount = partialPaid._sum.amount;
+  const partialPaidAmount = parseFloat(partialPaid._sum.amount);
   const finalPaidAmount = partialPaidAmount + paidAmount;
   return finalPaidAmount;
 }
@@ -139,7 +139,7 @@ async function AccountStatus(dateKey,userId) {
             amount:true
         }
     });
-    const totalCustomerDue = totalDue._sum.amount ||0;
+    const totalCustomerDue = parseFloat(totalDue._sum.amount ||0);
    
     // total Loan
     const totalLoan = await prisma.customerLoan.aggregate({
@@ -154,9 +154,9 @@ async function AccountStatus(dateKey,userId) {
             amount:true
         }
     });
-    const totalCustomerLoan = totalLoan._sum.amount || 0;
+    const totalCustomerLoan = parseFloat(totalLoan._sum.amount || 0);
 
-    const customerObligations = (parseInt(totalCustomerDue) + parseInt(totalCustomerLoan));
+    const customerObligations = (totalCustomerDue) + totalCustomerLoan;
     // console.log(customerObligations)
 
     // customer cash collect like advanced, not partial (if partial have invoice)
@@ -173,7 +173,7 @@ async function AccountStatus(dateKey,userId) {
             amount: true
         }
     });
-    const totalAdvancedCash = advancedCash._sum.amount ||0;
+    const totalAdvancedCash = parseFloat(advancedCash._sum.amount ||0);
     
     // ------ make status
 
@@ -220,7 +220,7 @@ async function dateWaysDynamic(dateKey, userId, model, conditions = {}, sumField
       }
     });
 
-    return total._sum[sumField] || 0;
+    return parseFloat(total._sum[sumField] || 0);
   } catch (error) {
     console.error(`Error in dateWaysDynamic (${model}):`, error);
     return 0; // Return 0 instead of object for consistency

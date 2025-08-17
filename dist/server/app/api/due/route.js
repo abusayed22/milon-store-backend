@@ -1,1 +1,101 @@
-(()=>{var e={};e.id=363,e.ids=[363],e.modules={3524:e=>{"use strict";e.exports=require("@prisma/client")},399:e=>{"use strict";e.exports=require("next/dist/compiled/next-server/app-page.runtime.prod.js")},517:e=>{"use strict";e.exports=require("next/dist/compiled/next-server/app-route.runtime.prod.js")},9348:e=>{"use strict";e.exports=require("next/dist/server/app-render/work-async-storage.external.js")},412:e=>{"use strict";e.exports=require("next/dist/server/app-render/work-unit-async-storage.external.js")},4124:(e,r,t)=>{"use strict";t.r(r),t.d(r,{patchFetch:()=>g,routeModule:()=>c,serverHooks:()=>m,workAsyncStorage:()=>l,workUnitAsyncStorage:()=>x});var s={};t.r(s),t.d(s,{GET:()=>p});var o=t(8797),i=t(42),n=t(8492),u=t(3524),a=t(9540);let d=new u.PrismaClient;async function p(e){let{searchParams:r}=new URL(e.url);console.log(r);let t=r.get("customerId");if(console.log("userId "+t),!t)return console.log("user_id is required"),a.NextResponse.json({status:400,error:"user_id is required"});try{let e=await d.dueList.findMany({where:{customer_id:parseInt(t)},include:{customer:!0}});return console.log("due list :"+e),a.NextResponse.json({status:"ok",data:e})}catch(e){return console.error("Failed to fetch due list:",e.message),a.NextResponse.json({status:500,error:"Failed to fetch due list"})}}let c=new o.AppRouteRouteModule({definition:{kind:i.RouteKind.APP_ROUTE,page:"/api/due/route",pathname:"/api/due",filename:"route",bundlePath:"app/api/due/route"},resolvedPagePath:"H:\\Apps-key\\milon-store-sharif-backend\\src\\app\\api\\due\\route.js",nextConfigOutput:"",userland:s}),{workAsyncStorage:l,workUnitAsyncStorage:x,serverHooks:m}=c;function g(){return(0,n.patchFetch)({workAsyncStorage:l,workUnitAsyncStorage:x})}},8031:()=>{},5303:()=>{}};var r=require("../../../webpack-runtime.js");r.C(e);var t=e=>r(r.s=e),s=r.X(0,[492,661],()=>t(4124));module.exports=s})();
+(() => {
+  var e = {};
+  (e.id = 363),
+    (e.ids = [363]),
+    (e.modules = {
+      3524: (e) => {
+        "use strict";
+        e.exports = require("@prisma/client");
+      },
+      399: (e) => {
+        "use strict";
+        e.exports = require("next/dist/compiled/next-server/app-page.runtime.prod.js");
+      },
+      517: (e) => {
+        "use strict";
+        e.exports = require("next/dist/compiled/next-server/app-route.runtime.prod.js");
+      },
+      9348: (e) => {
+        "use strict";
+        e.exports = require("next/dist/server/app-render/work-async-storage.external.js");
+      },
+      412: (e) => {
+        "use strict";
+        e.exports = require("next/dist/server/app-render/work-unit-async-storage.external.js");
+      },
+      4124: (e, r, t) => {
+        "use strict";
+        t.r(r),
+          t.d(r, {
+            patchFetch: () => g,
+            routeModule: () => c,
+            serverHooks: () => m,
+            workAsyncStorage: () => l,
+            workUnitAsyncStorage: () => x,
+          });
+        var s = {};
+        t.r(s), t.d(s, { GET: () => p });
+        var o = t(8797),
+          i = t(42),
+          n = t(8492),
+          u = t(3524),
+          a = t(9540);
+        let d = new u.PrismaClient();
+        async function p(e) {
+          let { searchParams: r } = new URL(e.url);
+          console.log(r);
+          let t = r.get("customerId");
+          if ((console.log("userId " + t), !t))
+            return (
+              console.log("user_id is required"),
+              a.NextResponse.json({ status: 400, error: "user_id is required" })
+            );
+          try {
+            let e = await d.dueList.findMany({
+              where: { customer_id: parseInt(t) },
+              include: { customer: !0 },
+            });
+            return (
+              console.log("due list :" + e),
+              a.NextResponse.json({ status: "ok", data: e })
+            );
+          } catch (e) {
+            return (
+              console.error("Failed to fetch due list:", e.message),
+              a.NextResponse.json({
+                status: 500,
+                error: "Failed to fetch due list",
+              })
+            );
+          }
+        }
+        let c = new o.AppRouteRouteModule({
+            definition: {
+              kind: i.RouteKind.APP_ROUTE,
+              page: "/api/due/route",
+              pathname: "/api/due",
+              filename: "route",
+              bundlePath: "app/api/due/route",
+            },
+            resolvedPagePath:
+              "H:\\Apps-key\\milon-store-sharif-backend\\src\\app\\api\\due\\route.js",
+            nextConfigOutput: "",
+            userland: s,
+          }),
+          { workAsyncStorage: l, workUnitAsyncStorage: x, serverHooks: m } = c;
+        function g() {
+          return (0, n.patchFetch)({
+            workAsyncStorage: l,
+            workUnitAsyncStorage: x,
+          });
+        }
+      },
+      8031: () => {},
+      5303: () => {},
+    });
+  var r = require("../../../webpack-runtime.js");
+  r.C(e);
+  var t = (e) => r((r.s = e)),
+    s = r.X(0, [492, 661], () => t(4124));
+  module.exports = s;
+})();

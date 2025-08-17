@@ -20,7 +20,7 @@ async function getTotalSpecialDiscount(invoices) {
       amount: true,
     },
   });
-  return specialDiscountAmount._sum.amount || 0;
+  return parseFloat(specialDiscountAmount._sum.amount || 0);
 }
 const byPartialInvoices = async (invoiceModel, invoices) => {
   if (!Array.isArray(invoices) || invoices.length === 0) {
@@ -39,7 +39,7 @@ const byPartialInvoices = async (invoiceModel, invoices) => {
       },
     });
 
-    return partialAmount._sum.amount || 0; 
+    return parseFloat(partialAmount._sum.amount || 0); 
   } catch (error) {
     console.error("Error fetching partial invoices:", error);
     throw new Error("Failed to fetch partial invoices");
@@ -115,7 +115,7 @@ export async function GET(req, res) {
     });
 
     // Calculate today totals for sales, due, and cash
-    let todayTotalSalesPrice = totalSalesCalculation._sum.discountedPrice || 0;
+    let todayTotalSalesPrice = parseFloat(totalSalesCalculation._sum.discountedPrice || 0);
     let todayTotalDueAmount = 0;
     let todayTotalCashAmount = 0;
 
@@ -423,7 +423,7 @@ export async function OPTIONS(req, res) {
         discountedPrice: true,
       },
     });
-    const totalDue = due._sum.discountedPrice || 0;
+    const totalDue = parseFloat(due._sum.discountedPrice || 0);
     return NextResponse.json({ status: "ok", data: totalDue });
   } catch (error) {
     console.log(error.message);
@@ -506,7 +506,7 @@ export async function POST(req, res) {
                 totalpacket: parseFloat(totalpacket),
                 totalPrice: parseFloat(totalPrice),
                 discountedPrice: parseFloat(discountedPrice),
-                discount: parseInt(discount) || 0,
+                discount: parseFloat(discount) || 0,
                 customer_id: parseInt(customer_id),
                 paymentStatus,
                 invoice: invoiceId,

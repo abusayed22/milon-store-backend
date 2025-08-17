@@ -23,11 +23,11 @@ model products {
   subCategory String?
   perPacket   Float?
   totalpacket Float?
-  quantity    Int
+  quantity    Float
   note        String
   created_at  DateTime         
   updated_at  DateTime         @updatedAt
-  unitPrice   Int
+  unitPrice   Float
   stock       Boolean          @default(true)
   history     productHistory[]
 }
@@ -39,9 +39,9 @@ model productHistory {
   category    categoryType
   subCategory String?
   totalpacket Float?
-  quantity    Int
+  quantity    Float
   created_at  DateTime     @default(now())
-  unitPrice   Int?
+  unitPrice   Float?
   product     products     @relation(fields: [productId], references: [id], map: "productHistory_productId_fk")
 
   @@index([productId], map: "productHistory_productId_fkey")
@@ -89,7 +89,7 @@ model sales {
   note            String
   created_at      DateTime      @default(now())
   updated_at      DateTime      @default(now()) @updatedAt
-  discount        Int
+  discount        Float
   discountedPrice Float
   totalPrice      Float
   invoice         String

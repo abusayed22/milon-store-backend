@@ -16,7 +16,7 @@ async function getTotalSpecialDiscount(invoices) {
       amount: true,
     },
   });
-  return specialDiscountAmount._sum.amount || 0;
+  return parseFloat(specialDiscountAmount._sum.amount || 0);
 }
 
 // utility function partial of report get
@@ -37,7 +37,7 @@ const byPartialInvoices = async (invoiceModel, invoices) => {
       },
     });
 
-    return partialAmount._sum.amount || 0; // Return 0 if no amount is found
+    return parseFloat(partialAmount._sum.amount || 0); // Return 0 if no amount is found
   } catch (error) {
     console.error("Error fetching partial invoices:", error);
     throw new Error("Failed to fetch partial invoices");

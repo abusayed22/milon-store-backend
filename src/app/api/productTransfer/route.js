@@ -160,15 +160,15 @@ export async function POST(req, res) {
             updatedProduct = await prisma.products.update({
               where: { id: product.id },
               data: {
-                quantity: product.quantity - quantity,
+                quantity: parseFloat(product.quantity )- parseFloat(quantity),
               },
             });
           } else {
             updatedProduct = await prisma.products.update({
               where: { id: product.id },
               data: {
-                quantity: product.quantity - quantity,
-                totalpacket: product.totalpacket - totalpacket,
+                quantity: parseFloat(product.quantity) - parseFloat(quantity),
+                totalpacket: parseFloat(product.totalpacket) - parseFloat(totalpacket),
               },
             });
           }
