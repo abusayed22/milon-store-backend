@@ -4,299 +4,151 @@ import { DateTime } from "luxon";
 
 const prisma = new PrismaClient();
 
+
+
 export async function GET(req) {
   const { searchParams } = new URL(req.url);
-  const type = searchParams.get("type");
+  const dateParam = searchParams.get("date");
+  
 
   try {
     const timeZone = "Asia/Dhaka";
+    let gte, lte;
 
-    // Get the current UTC time
-    const nowUTC = DateTime.utc();
+     if (dateParam) {
+      const selectedDate = DateTime.fromISO(dateParam, { zone: timeZone });
+      gte = selectedDate.startOf("day").toJSDate();
+      lte = selectedDate.endOf("day").toJSDate();
+    } else {
+      const nowInDhaka = DateTime.now().setZone(timeZone);
+      gte = nowInDhaka.startOf("day").toJSDate();
+      lte = nowInDhaka.endOf("day").toJSDate();
+    }
 
-    // Calculate the start and end of the day in UTC, adjusted for Asia/Dhaka
-    const startOfDayUTC = nowUTC.setZone(timeZone).startOf("day").toUTC();
-    const endOfDayUTC = nowUTC.setZone(timeZone).endOf("day").toUTC();
+    const dateFilter = { created_at: { gte, lte } };
 
 
-    if (type === "sale_calcutlation") {
-      // Calculate total special Discount for today
-      const totalSpecialDiscountAmount = await prisma.specialDiscount.aggregate({
-        where: {
-          created_at: {
-            gte: startOfDayUTC,
-            lte: endOfDayUTC,
-          },
-        },
-        _sum: {
-          amount: true,
-        },
-      });
-      const totalSpecialDiscount = parseFloat(totalSpecialDiscountAmount._sum.amount)
 
-      // -------------  Feed ----------
-      // Get today's total amount and quantity for "FEED" category
-      const feedSales = await prisma.sales.aggregate({
-        where: {
-          category: "FEED",
-          created_at: {
-            gte: startOfDayUTC,
-            lte: endOfDayUTC,
-          },
-        },
-        _sum: {
-          discountedPrice: true,
-          quantity: true,
-        },
-      });
+      // Fetch all data concurrently
+      const [
+        specialDiscount,
+        todaySpecialDiscount,
+        feedSales,
+        medicineSales,
+        grocerySales,
+        todayTotalSales,
+        todayExpenses,
+        todayCollectedPayment,
+        paidSaleInvoices,
+        totalExpenses,
+        totalCollectedPayment,
+        totalCustomerLoan,
+      ] = await Promise.all([
+        // specialDiscount
+        prisma.specialDiscount.aggregate({ where: dateFilter, _sum: { amount: true } }),
+        prisma.specialDiscount.aggregate({ where: dateFilter, _sum: { amount: true } }),
+        // feedSales
+        prisma.sales.aggregate({
+          where: { category: "FEED", ...dateFilter },
+          _sum: { discountedPrice: true, quantity: true }
+        }),
+        // medicineSales
+        prisma.sales.aggregate({
+          where: { category: "MEDICINE", ...dateFilter },
+          _sum: { discountedPrice: true, quantity: true }
+        }),
+        // grocerySales
+        prisma.sales.aggregate({
+          where: { category: "GROCERY", ...dateFilter },
+          _sum: { discountedPrice: true, quantity: true }
+        }),
+        // todayTotalSales 
+        prisma.sales.aggregate({ where: dateFilter, _sum: { discountedPrice: true } }),
+        // todayExpenses
+        prisma.expneses.aggregate({ where: dateFilter, _sum: { amount: true } }),
+        // todayCollectedPayment
+        prisma.collectPayment.aggregate({ where: dateFilter, _sum: { amount: true } }),
+      //  paidSaleInvoices
+        prisma.sales.findMany({
+          where: { created_at: { gte, lte } ,paymentStatus: "paid" },
+          select: { invoice: true }
+        }),
+        // totalExpenses
+        prisma.expneses.aggregate({where:dateFilter, _sum: { amount: true } }),
+        // totalCollectedPayment
+        prisma.collectPayment.aggregate({where:dateFilter, _sum: { amount: true } }),
+        // totalCustomerLoan
+        prisma.customerLoan.aggregate({where:dateFilter, _sum: { amount: true } }),
 
-      const feedSalesQuantity = feedSales._sum.quantity || 0;
-      // net feed sales amount
-      const feedSalesAmount = parseFloat(feedSales._sum.discountedPrice);
+        ]);
+       
 
-      // -------------  Medicne ----------
-      // Get today's total amount and quantity for "MEDICINE" category
-      const medicineSales = await prisma.sales.aggregate({
-        where: {
-          category: "MEDICINE",
-          created_at: {
-            gte: startOfDayUTC,
-            lte: endOfDayUTC,
-          },
-        },
-        _sum: {
-          discountedPrice: true,
-          quantity: true,
-        },
-      });
-
-      const medicineSalesAmount = parseFloat(medicineSales._sum.discountedPrice);
-      const medicineSalesQuantity = medicineSales._sum.quantity || 0;
-
-      // ----------- Grocery ---------
-      // Get today's total amount and quantity for "GROCERY" category
-      const grocerySales = await prisma.sales.aggregate({
-        where: {
-          category: "GROCERY",
-          created_at: {
-            gte: startOfDayUTC,
-            lte: endOfDayUTC,
-          },
-        },
-        _sum: {
-          discountedPrice: true,
-          quantity: true,
-        },
+      // paidInvoices
+      const paidInvoices = paidSaleInvoices.map(item => item.invoice);
+      const paidSaleSpecialDiscount = await prisma.specialDiscount.aggregate({
+        where: {created_at: { gte, lte } , invoice: { in: paidInvoices } },
+        _sum: { amount: true }
       });
 
-      const grocerySalesAmount = parseFloat(grocerySales._sum.discountedPrice);
-      const grocerySalesQuantity = grocerySales._sum.quantity || 0;
+      // Calculate all metrics
+      const totalSpecialDiscount = parseFloat(specialDiscount._sum.amount || 0);
+      const todaySalesAmount = parseFloat(todayTotalSales._sum.discountedPrice || 0) - parseFloat(todaySpecialDiscount._sum.amount ||0);
+      const todayExpensesAmount = parseFloat(todayExpenses._sum.amount || 0);
+      const todayCollectedAmount = parseFloat(todayCollectedPayment._sum.amount || 0);
+ 
 
-      // Return the aggregated results
+      const totalPaidSalesAmount = parseFloat((await prisma.sales.aggregate({
+        where: {created_at:{gte,lte}, paymentStatus: "paid" },
+        _sum: { discountedPrice: true }
+      }))._sum.discountedPrice || 0);
+
+      const totalPaidSpecialDiscount = parseFloat(paidSaleSpecialDiscount._sum.amount || 0);
+      const totalExpensesAmount = parseFloat(totalExpenses._sum.amount || 0);
+      const totalCollectedAmount = parseFloat(totalCollectedPayment._sum.amount || 0);
+      const totalCustomerLoanAmount = parseFloat(totalCustomerLoan._sum.amount || 0);
+      const totalAvailableCash = ((totalPaidSalesAmount - totalPaidSpecialDiscount) + totalCollectedAmount) - totalExpensesAmount;
+
+      
       return NextResponse.json({
         status: "ok",
         data: {
-          feedSales: {
-            totalAmount: feedSalesAmount,
-            totalQuantity: feedSalesQuantity,
-            today: endOfDayUTC,
-            totalSpecialDiscount,
+          today: {
+            availableCash: totalAvailableCash,
+            todaySale: todaySalesAmount,
+            sales: {
+              feed: {
+                amount: parseFloat(feedSales._sum.discountedPrice || 0),
+                quantity: parseFloat(feedSales._sum.quantity || 0)
+              },
+              medicine: {
+                amount: parseFloat(medicineSales._sum.discountedPrice || 0),
+                quantity: parseFloat(medicineSales._sum.quantity || 0)
+              },
+              grocery: {
+                amount: parseFloat(grocerySales._sum.discountedPrice || 0),
+                quantity: parseFloat(grocerySales._sum.quantity || 0)
+              },
+              
+              totalSpecialDiscount
+            },
+            expenses: todayExpensesAmount,
+            collectedPayments: todayCollectedAmount
           },
-          medicineSales: {
-            totalAmount: medicineSalesAmount,
-            totalQuantity: medicineSalesQuantity,
-            today: endOfDayUTC,
-            totalSpecialDiscount,
+          total: {
+            availableCash: totalAvailableCash,
+            expenses: totalExpensesAmount,
+            collectedPayments: totalCollectedAmount,
+            customerLoan: totalCustomerLoanAmount
           },
-          grocerySales: {
-            totalAmount: grocerySalesAmount,
-            totalQuantity: grocerySalesQuantity,
-            today: endOfDayUTC,
-            totalSpecialDiscount,
-          },
-        },
+          dateRange: { gte, lte }
+        }
       });
-    } else if (type === "available_cash") {
-      try {
-        // Calculate total sales for today
-        const todayTotalSalesAmount = await prisma.sales.aggregate({
-          where: {
-            created_at: {
-              gte: startOfDayUTC,
-              lte: endOfDayUTC,
-            },
-          },
-          _sum: {
-            discountedPrice: true,
-          },
-        });
-
-        // Calculate total special Discount for today
-        const totalSpecialDiscount = await prisma.specialDiscount.aggregate({
-          where: {
-            created_at: {
-              gte: startOfDayUTC,
-              lte: endOfDayUTC,
-            },
-          },
-          _sum: {
-            amount: true,
-          },
-        });
-        const totalSalesAmount =
-          parseFloat(todayTotalSalesAmount._sum.discountedPrice) -
-          parseFloat(totalSpecialDiscount._sum.amount);
-
-        // Calculate total expenses for today
-        const totalExpenses = await prisma.expneses.aggregate({
-          where: {
-            created_at: {
-              gte: startOfDayUTC,
-              lte: endOfDayUTC,
-            },
-          },
-          _sum: {
-            amount: true,
-          },
-        });
-        const totalExpensesAmount = parseFloat(totalExpenses._sum.amount || 0);
-
-        // today total customer Loan
-        const todayCustomerLoan = await prisma.customerLoan.aggregate({
-          where: {
-            created_at: {
-              gte: startOfDayUTC,
-              lte: endOfDayUTC,
-            },
-          },
-          _sum:{
-            amount:true
-          }
-        });
-        const todayCustomerLoanAmount = parseFloat(todayCustomerLoan._sum.amount);
-
-
-        // Total collect payment
-        const totalCollectedPayment = await prisma.collectPayment.aggregate({
-          where: {
-            created_at: {
-              gte: startOfDayUTC,
-              lte: endOfDayUTC,
-            },
-          },
-          _sum: {
-            amount: true,
-          },
-        });
-        const totalCollectedAmount = parseFloat(totalCollectedPayment._sum.amount || 0);
-
-        // today total collection amount 
-        // const today
-
-        // Calculate available cash
-        const availableCash =
-          (parseFloat(totalSalesAmount) + parseFloat(totalCollectedAmount)) - (parseFloat(totalExpensesAmount) + parseFloat(todayCustomerLoanAmount));
-
-        return NextResponse.json({
-          status: "ok",
-          availableCash,
-          totalSalesAmount,
-          totalExpensesAmount,
-          totalCollectedAmount,
-          today: endOfDayUTC,
-        });
-      } catch (error) {
-        console.error(error.message);
-        return NextResponse.json({ error: error.message });
-      }
-    } else if (type === 'total_available_cash') {
-      try {
-
-        const paidSaleInvoices = await prisma.sales.findMany({
-          where:{
-            paymentStatus:"paid",
-          },
-          select: {
-            invoice:true
-          }
-        });
-        const paidInvoices = paidSaleInvoices.map((item => item.invoice));
-
-
-        // Calculate total paid sales for total
-        const todayTotalSales = await prisma.sales.aggregate({
-          where:{
-            paymentStatus:"paid"
-          },
-          _sum: {
-            discountedPrice: true,
-          },
-        });
-        const totalPaidSalesAmount = parseFloat(todayTotalSales._sum.discountedPrice);
-        
-        const paidSaleSpecialDiscount = await prisma.specialDiscount.aggregate({
-          where: {
-            invoice: {
-              in: paidInvoices
-            }
-          },
-          _sum: {
-            amount: true
-          }
-        })
-        const paidSaleSpecialdiscountAmount = parseFloat(paidSaleSpecialDiscount._sum.amount || 0);
-
-
-
-        // Calculate total expenses for today
-        const totalExpenses = await prisma.expneses.aggregate({
-          _sum: {
-            amount: true,
-          },
-        });
-        const totalExpensesAmount = parseFloat(totalExpenses._sum.amount || 0);
-
-        // Total collect payment
-        const totalCollectedPayment = await prisma.collectPayment.aggregate({
-          _sum: {
-            amount: true,
-          },
-        });
-        const totalCollectedAmount = parseFloat(totalCollectedPayment._sum.amount || 0);
-
-        const totalCustomerLoan = await prisma.customerLoan.aggregate({
-          _sum: {
-            amount:true
-          }
-        });
-        const totalCustomerLoanAmount = parseFloat(totalCustomerLoan._sum.amount);
-        
-        // Calculate available cash
-        const availableCash = ((((totalPaidSalesAmount - paidSaleSpecialdiscountAmount) + totalCollectedAmount) - totalCustomerLoanAmount) - totalExpensesAmount);
-        
-        
-        return NextResponse.json({
-          status: "ok",
-          availableCash,
-          // totalSalesAmount,
-          // totalExpensesAmount,
-          // totalCollectedAmount,
-        });
-      } catch (error) {
-        console.error(error.message);
-        return NextResponse.json({ error: error.message });
-      }
-    } else {
-      return NextResponse.json({
-        status: 400,
-        error: "Invalid type parameter",
-      });
-    }
+    
   } catch (error) {
-    console.error("Failed to get total sales amount for today:", error.message);
+    console.error("Dashboard API error:", error);
     return NextResponse.json({
-      status: 500,
-      error: "Failed to get total sales amount for today",
-    });
+      status: "error",
+      error: error.message
+    }, { status: 500 });
   }
 }
