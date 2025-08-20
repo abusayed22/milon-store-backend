@@ -5,7 +5,8 @@ const prisma = new PrismaClient();
 
 export async function GET(req) {
   try {
-    const [sales, discount, expenses, loan, payment] =
+    const [sales, discount, expenses, 
+       payment] =
       await prisma.$transaction([
         prisma.sales.aggregate({
           where: { paymentStatus: "paid" },
