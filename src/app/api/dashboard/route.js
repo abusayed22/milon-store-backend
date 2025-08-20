@@ -79,8 +79,8 @@ export async function GET(req) {
     const totalPaidSalesAmount = (totalPaidSalesResult._sum.discountedPrice ?? 0) - (paidSaleSpecialDiscount._sum.amount ?? 0);
     const totalExpensesAmount = totalExpenses._sum.amount ?? 0;
     const totalCollectedAmount = totalCollected._sum.amount ?? 0;
-    const totalCustomerLoanAmount = totalLoan._sum.amount ?? 0;
-    const totalAvailableCash = (totalPaidSalesAmount + totalCollectedAmount) - totalExpensesAmount - totalCustomerLoanAmount;
+    // const totalCustomerLoanAmount = totalLoan._sum.amount ?? 0;
+    const totalAvailableCash = (totalPaidSalesAmount + totalCollectedAmount) - totalExpensesAmount ;
 
     // --- Construct Final Response ---
     const findCategory = (cat) => salesByCategoryDate.find(c => c.category === cat)?._sum || {};
