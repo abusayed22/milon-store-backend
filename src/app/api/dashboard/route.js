@@ -104,7 +104,7 @@ export async function GET(req) {
           availableCash: totalAvailableCash, //TODO:
           expenses: totalExpensesAmount,
           collectedPayments: totalCollectedAmount,
-          customerLoan: totalCustomerLoanAmount,
+          // customerLoan: totalCustomerLoanAmount,
         },
         dateRange: { gte, lte }
       }
