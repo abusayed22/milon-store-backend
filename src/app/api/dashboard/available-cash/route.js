@@ -26,22 +26,22 @@ export async function GET(req) {
           _sum: { amount: true },
         }),
         prisma.expneses.aggregate({ _sum: { amount: true } }),
-        prisma.customerLoan.aggregate({ _sum: { amount: true } }),
+        // prisma.customerLoan.aggregate({ _sum: { amount: true } }),
         prisma.collectPayment.aggregate({ _sum: { amount: true } }),
       ]);
     const totalPaidSales =
       (sales._sum.discountedPrice ?? 0) - (discount._sum.amount ?? 0);
     const totalExpenses = expenses._sum.amount ?? 0;
-    const totalLoan = loan._sum.amount ?? 0;
+    // const totalLoan = loan._sum.amount ?? 0; // total not needed to calculation
     const totalCollected = payment._sum.amount ?? 0;
     const availableCash =
-      totalPaidSales + totalCollected - totalExpenses - totalLoan;
+      totalPaidSales + totalCollected - totalExpenses ;
    
-
+      console.log(availableCash)
       return NextResponse.json({ status: "ok", availableCash });
   } catch (error) {
     console.error(
-      `API Route Error for type "${type}" or date "${dateParam}":`,
+      `API Route Error for type or date:`,
       error.message
     );
     return NextResponse.json(
