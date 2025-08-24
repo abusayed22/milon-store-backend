@@ -127,10 +127,12 @@ export async function GET(req) {
   try {
     const timeZone = "Asia/Dhaka";
     let gte, lte;
+    
 
     // Use the provided date or default to the current day
     if (dateParam) {
       const selectedDate = DateTime.fromISO(dateParam, { zone: timeZone });
+      // console.log(selectedDate)
       gte = selectedDate.startOf("day").toJSDate();
       lte = selectedDate.endOf("day").toJSDate();
     } else {
@@ -138,6 +140,8 @@ export async function GET(req) {
       gte = nowInDhaka.startOf("day").toJSDate();
       lte = nowInDhaka.endOf("day").toJSDate();
     }
+    // console.log("gte ",gte)
+    // console.log("lte ",lte)
 
     // Filter for the selected day (e.g., "Today's Sales")
     const dateFilter = { created_at: { gte, lte } };
@@ -218,8 +222,8 @@ export async function GET(req) {
     const totalPaidSalesAmount = (totalPaidSalesResult._sum.discountedPrice ?? 0) - (paidSaleSpecialDiscount._sum.amount ?? 0);
     const totalExpensesAmount = totalExpenses._sum.amount ?? 0;
     const totalCollectedAmount = totalCollected._sum.amount ?? 0;
-    const totalCustomerLoanAmount = totalLoan._sum.amount ?? 0;
-    const totalAvailableCash = (totalPaidSalesAmount + totalCollectedAmount) - totalExpensesAmount - totalCustomerLoanAmount;
+    // const totalCustomerLoanAmount = totalLoan._sum.amount ?? 0;
+    const totalAvailableCash = (totalPaidSalesAmount + totalCollectedAmount) - totalExpensesAmount ;
 
     // --- Construct Final Response ---
     const findCategory = (cat) => salesByCategoryDate.find(c => c.category === cat)?._sum || {};
@@ -248,7 +252,7 @@ export async function GET(req) {
           availableCash: totalAvailableCash,
           expenses: totalExpensesAmount,
           collectedPayments: totalCollectedAmount,
-          customerLoan: totalCustomerLoanAmount,
+          // customerLoan: totalCustomerLoanAmount,
         },
         dateRange: { gte, lte }
       }

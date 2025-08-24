@@ -28,6 +28,12 @@ export async function GET(req) {
         prisma.expneses.aggregate({ _sum: { amount: true } }),
         // prisma.customerLoan.aggregate({ _sum: { amount: true } }),
         prisma.collectPayment.aggregate({ _sum: { amount: true } }),
+        // prisma.sales.aggregate({
+        //   where:{
+        //     paymentStatus: "partial"
+        //   },
+
+        // }),
       ]);
     const totalPaidSales =
       (sales._sum.discountedPrice ?? 0) - (discount._sum.amount ?? 0);
@@ -36,8 +42,11 @@ export async function GET(req) {
     const totalCollected = payment._sum.amount ?? 0;
     const availableCash =
       totalPaidSales + totalCollected - totalExpenses ;
+
+      console.log("payment ",payment)
+
    
-      console.log(availableCash)
+      
       return NextResponse.json({ status: "ok", availableCash });
   } catch (error) {
     console.error(
