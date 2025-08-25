@@ -734,6 +734,7 @@ const parseDate = (dateString) => {
       const addedQty = getSum(additionsInPeriod, product.id);
       const soldQty = getSum(salesInPeriod, product.id);
       const transferredQty = getSum(transfersInPeriod, product.id);
+      const periodStock = addedQty - soldQty - transferredQty;
       // console.log("addedQty ",addedQty)
 
       
@@ -748,6 +749,7 @@ const parseDate = (dateString) => {
         category: product.category,
         subCategory: product.subCategory || "N/A",
         previousStock: previousStock,
+        // periodStock,
         added: addedQty,
         sold: soldQty,
         transferred: transferredQty,
@@ -755,6 +757,8 @@ const parseDate = (dateString) => {
       };
     });
 
+    reportData.sort((a, b) => a.productName.localeCompare(b.productName));
+    
     // --- 3. APPLY PAGINATION ---
     const paginatedData = reportData.slice((page - 1) * limit, page * limit);
     const totalRecords = reportData.length;
