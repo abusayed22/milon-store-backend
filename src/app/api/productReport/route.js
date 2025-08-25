@@ -366,6 +366,22 @@ export async function GET(req, res) {
       },
     });
 
+
+    //  Fetch previously Product History Data for Date Range
+    // const previousProductHistory = await prisma.productHistory.findMany({
+    //   where: {
+    //     created_at: {
+    //       lt: startOfDay.toISOString(),
+    //     },
+    //   },
+    //   include: {
+    //     product: true,
+    //   },
+    //   orderBy: {
+    //     created_at: "desc",
+    //   },
+    // });
+
     const currentStock = await prisma.products.findMany({
       where: {
         stock: true,
@@ -384,6 +400,7 @@ export async function GET(req, res) {
         stock: true,
       },
     });
+    
 
 
     // calculate summary report
@@ -393,6 +410,11 @@ export async function GET(req, res) {
         const historyEntriesForProduct = productHistory.filter((history) => {
           return history.productId === product.id;
         });
+        
+        // Filter the previously history entries for this specific product
+        // const previouslyHistoryEntriesForProduct = productHistory.filter((history) => {
+        //   return history.productId === product.id;
+        // });
 
         // console.log(historyEntriesForProduct)
         // Fetch the product with product id for its sales calculation
@@ -411,7 +433,26 @@ export async function GET(req, res) {
         });
         const totalSalePacket = parseFloat( saleProductQuntity._sum.totalpacket || 0);
         const totalSaleQty = parseFloat(saleProductQuntity._sum.quantity || 0);
+        
+        // Fetch the Previously product with product id for its sales calculation
+        const perviouslySaleProductQuntity = await prisma.sales.aggregate({
+          where: {
+            productId: parseInt(product.id),
+            created_at: {
+              lt:start.toISOString()
+              // gte: start?.toISOString(), // Start of day in UTC
+              // lte: end?.toISOString(), // End of day in UTC
+            },
+          },
+          _sum: {
+            quantity: true,
+            totalpacket: true,
+          },
+        });
+        const previousTotalSalePacket = parseFloat( perviouslySaleProductQuntity._sum.totalpacket || 0);
+        const previouslyTotalSaleQty = parseFloat(perviouslySaleProductQuntity._sum.quantity || 0);
 
+        // Transfer product
         const transferProductQuntity = await prisma.productTransferList.aggregate({
           where: {
             productId: parseInt(product.id),
@@ -427,6 +468,24 @@ export async function GET(req, res) {
         });
         const totalTransferPacket = parseFloat(transferProductQuntity._sum.totalpacket || 0);
         const totalTransferQty = parseFloat(transferProductQuntity._sum.quantity || 0);
+        
+        // Previously transfer products
+        const previouslyTransferProductQuntity = await prisma.productTransferList.aggregate({
+          where: {
+            productId: parseInt(product.id),
+            created_at: {
+              lt:start.toISOString()
+              // gte: start?.toISOString(), // Start of day in UTC
+              // lte: end?.toISOString(), // End of day in UTC
+            },
+          },
+          _sum: {
+            quantity: true,
+            totalpacket: true,
+          },
+        });
+        const previouslyTotalTransferPacket = parseFloat(previouslyTransferProductQuntity._sum.totalpacket || 0);
+        const previouslyTotalTransferQty = parseFloat(previouslyTransferProductQuntity._sum.quantity || 0);
 
 
     // total product stock by date
@@ -434,8 +493,8 @@ export async function GET(req, res) {
           where: {
             id: parseInt(product.id),
             updated_at: {
-              gte: start?.toISOString(), // Start of day in UTC
-              lte: end?.toISOString(), // End of day in UTC
+              // gte: start?.toISOString(), // Start of day in UTC
+              // lte: end?.toISOString(), // End of day in UTC
             },
           },
           _sum: {
@@ -445,6 +504,25 @@ export async function GET(req, res) {
         });
         const totalStockPacket = parseFloat(dateByStock._sum.totalpacket || 0);
         const totalStockQty = parseFloat(dateByStock._sum.quantity || 0);
+
+        // previus product history
+        const previuslyProductHistory = await prisma.productHistory.aggregate({
+          where: {
+            id: parseInt(product.id),
+            created_at: {
+              // gte: end?.toISOString(), // Start of day in UTC
+              // lte: start?.toISOString(), // End of day in UTC
+              lt:new Date('2025-08-24')
+              // lt:start.toISOString()
+            },
+          },
+          _sum: {
+            quantity: true,
+            totalpacket: true,
+          },
+        });
+        const totalPrevStockPacket = parseFloat(previuslyProductHistory._sum.totalpacket || 0);
+        const totalPrevStockQty = parseFloat(previuslyProductHistory._sum.quantity || 0);
       
 
         // Calculate the total packets added for this specific product
@@ -479,6 +557,42 @@ export async function GET(req, res) {
           (sum, entry) => sum + (entry.quantity || 0),
           0
         );
+        
+        // Previously total add product packet calculation
+        // const PreviouslyTotalAddPacket = historyEntriesForProduct.reduce((sum, entry) => {
+        //   const totalpacketValue = parseFloat(entry.totalpacket);
+        //   const totalQuantityValue = parseFloat(entry.quantity);
+
+        //   // Check feed and other
+        //   if (product.category === "FEED") {
+        //     if (
+        //       typeof totalpacketValue !== "number" ||
+        //       isNaN(totalpacketValue)
+        //     ) {
+        //       return sum;
+        //     }
+        //     return sum + totalpacketValue;
+        //   } else {
+        //     // Check if quantity is a valid number
+        //     if (
+        //       typeof totalQuantityValue !== "number" ||
+        //       isNaN(totalQuantityValue)
+        //     ) {
+        //       return sum;
+        //     }
+        //     return sum + totalQuantityValue;
+        //   }
+        // }, 0);
+
+
+        // Optional: Previously Calculate other values like total quantity, total stock, etc.
+        // const previouslyTotalAddProductQty = previouslyHistoryEntriesForProduct.reduce(
+        //   (sum, entry) => sum + (entry.quantity || 0),
+        //   0
+        // );
+        // console.log(`paket:${totalAddPacket} qty:${totalAddProductQty}`)
+        console.log(`${product.name} :`,totalPrevStockPacket ,totalPrevStockQty, `prevSale: ${previousTotalSalePacket} || prevTrasnfer:${previouslyTotalTransferPacket}`)
+
 
         return {
           productName: product.name,
@@ -495,6 +609,12 @@ export async function GET(req, res) {
           totalTransferQty,
           // salePacket,
           // saleQty,
+          currentStockPacket: totalStockPacket,
+          currentStockQty: totalStockQty,
+          // previously stock
+          prevStockPacket: (totalPrevStockPacket)-(previousTotalSalePacket +previouslyTotalTransferPacket) ,
+          prevStockQty: (totalPrevStockQty)-(previouslyTotalSaleQty +previouslyTotalTransferQty),
+
           stockPacket: (totalAddPacket) - (totalSalePacket+totalTransferPacket),
           // stockQty: 
         };
