@@ -495,7 +495,7 @@ export async function POST(req, res) {
             }
 
             // Create sale and update product quantity
-            await prisma.sales.create({
+            const salesCreated = await prisma.sales.create({
               data: {
                 productName: selectedProduct?.name,
                 productId: parseInt(selectedProduct?.id),
