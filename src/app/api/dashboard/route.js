@@ -160,6 +160,7 @@ export async function GET(req) {
         prisma.expneses.aggregate({ where: dateFilter, _sum: { amount: true } }),
         prisma.collectPayment.aggregate({ where: dateFilter, _sum: { amount: true } }),
         prisma.sales.aggregate({ where: dateFilter, _sum: { discountedPrice: true } }),
+        prisma.sales.aggregate({ where: { ...dateFilter, paymentStatus: "paid" }, _sum: { discountedPrice: true } }),
       ]),
       // 2. Get all-time totals up to the selected date
       prisma.$transaction([
@@ -177,8 +178,11 @@ export async function GET(req) {
       salesByCategoryDate,
       expensesDate,
       collectedPaymentDate,
-      totalSalesDate
+      totalSalesDate,
+      paidSalesDate
     ] = dateFilteredData;
+    // console.log("Sale ",totalSalesDate)
+    //  TODO:
 
     // Create a map to link invoices to their categories
     const invoiceToCategoryMap = salesWithInvoicesForDate.reduce((map, sale) => {
@@ -210,6 +214,10 @@ export async function GET(req) {
     const collectedForDate = collectedPaymentDate._sum.amount ?? 0;
     const availableCashForDate = (netSalesForDate + collectedForDate) - expensesForDate;
 
+        // --- NEW CALCULATION FOR TOTAL CASH SALE ---
+    const paidSalesAmount = paidSalesDate._sum.discountedPrice ?? 0;
+    const totalCashSale = paidSalesAmount + collectedForDate;
+
     // --- Process "Up-To-Date" Data ---
     const [totalExpenses, totalCollected, totalLoan, paidSaleInvoices, totalPaidSalesResult] = upToDateData;
     const paidInvoices = paidSaleInvoices.map(item => item.invoice);
@@ -218,12 +226,16 @@ export async function GET(req) {
       where: { invoice: { in: paidInvoices } }, 
       _sum: { amount: true }
     });
+    // console.log("paid sale discount ",totalSpecialDiscountForDate )
 
+    // Total up to date calculation 
     const totalPaidSalesAmount = (totalPaidSalesResult._sum.discountedPrice ?? 0) - (paidSaleSpecialDiscount._sum.amount ?? 0);
+    // console.log(totalPaidSalesAmount)
     const totalExpensesAmount = totalExpenses._sum.amount ?? 0;
+    // console.log("uptodate expense : ",totalExpensesAmount)
     const totalCollectedAmount = totalCollected._sum.amount ?? 0;
     // const totalCustomerLoanAmount = totalLoan._sum.amount ?? 0;
-    const totalAvailableCash = (totalPaidSalesAmount + totalCollectedAmount) - totalExpensesAmount ;
+    const upToDateAvailableCash = (totalPaidSalesAmount + totalCollectedAmount) - totalExpensesAmount ;
 
     // --- Construct Final Response ---
     const findCategory = (cat) => salesByCategoryDate.find(c => c.category === cat)?._sum || {};
@@ -237,10 +249,11 @@ export async function GET(req) {
       status: "ok",
       data: {
         selectedDate: {
-          availableCash: totalAvailableCash,
-          totalSales: netSalesForDate,
-          expenses: expensesForDate,
-          collectedPayments: collectedForDate,
+          availableCash: upToDateAvailableCash.toFixed(2),
+          totalSales: netSalesForDate.toFixed(2),
+          totalCashSale: totalCashSale.toFixed(2), //TODO:
+          expenses: expensesForDate.toFixed(2),
+          collectedPayments: collectedForDate.toFixed(2),
           sales: {
             feed: { amount: feedNet, quantity: findCategory("FEED").quantity ?? 0 },
             medicine: { amount: medicineNet, quantity: findCategory("MEDICINE").quantity ?? 0 },
@@ -248,12 +261,12 @@ export async function GET(req) {
             totalSpecialDiscount: totalSpecialDiscountForDate,
           },
         },
-        total: {
-          availableCash: totalAvailableCash,
-          expenses: totalExpensesAmount,
-          collectedPayments: totalCollectedAmount,
-          // customerLoan: totalCustomerLoanAmount,
-        },
+        // total: {
+        //   availableCash: totalAvailableCash,
+        //   expenses: totalExpensesAmount,
+        //   collectedPayments: totalCollectedAmount,
+        //   // customerLoan: totalCustomerLoanAmount,
+        // },
         dateRange: { gte, lte }
       }
     });

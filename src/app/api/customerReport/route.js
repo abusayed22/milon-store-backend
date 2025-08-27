@@ -30,7 +30,7 @@ async function getSpecialDiscount(invoices) {
       },
     },
   });
-  return parseFloat(result._sum.amount);
+  return parseFloat(result._sum.amount) ||0;
 }
 
 async function SpecialDiscount(saleData, stype = false) {
@@ -57,7 +57,7 @@ async function SpecialDiscount(saleData, stype = false) {
       },
     },
   });
-  return parseFloat(result._sum.amount);
+  return parseFloat(result._sum.amount) ||0;
 }
 
 
@@ -86,13 +86,13 @@ async function DueAmount(sales) {
       amount: true
     }
   })
-  const partialDueAmount = parseFloat(partialDue._sum.amount);
+  const partialDueAmount = parseFloat(partialDue._sum.amount)||0;
   const finalDueAmount = partialDueAmount + dueAmount;
   return finalDueAmount;
 }
 
 
-async function CashAmount(sales) {
+async function CashAmount(sales,dateKey) {
   const result = sales.reduce((acc, item) => {
     if (item.paymentStatus === "paid") {
       acc.paidAmount += parseFloat(item.discountedPrice)
@@ -117,8 +117,10 @@ async function CashAmount(sales) {
       amount: true
     }
   })
-  const partialPaidAmount = parseFloat(partialPaid._sum.amount);
+  const partialPaidAmount = parseFloat(partialPaid._sum.amount) ||0;
   const finalPaidAmount = partialPaidAmount + paidAmount;
+  // console.log(sales)
+  //  console.log(`Date: ${dateKey}, Final Paid Amount: ${partialPaidAmount}`);
   return finalPaidAmount;
 }
 
@@ -237,6 +239,7 @@ async function dateWaysDynamic(dateKey, userId, model, conditions = {}, sumField
 // API handler function
 export async function GET(req, res) {
   try {
+    
     const { searchParams } = new URL(req.url);
     const page = searchParams.get("page");
     const pageSize = searchParams.get("pageSize");
@@ -264,19 +267,37 @@ export async function GET(req, res) {
     }
 
     
-    let formatedDataArray = await Promise.all(Object.entries(formatedData).map(async ([dateKey, salesArray]) => ({
-      // const accountStatus = await AccountStatus(salesArray,userId)
-      // console.log(accountStatus)
-      date: dateKey,
-      sale: (DiscountPrice(salesArray) - await SpecialDiscount(salesArray)),
-      due: await DueAmount(salesArray),
-      discountedPrice: DiscountPrice(salesArray),
-      specialDiscount: await SpecialDiscount(salesArray),
-      cash: await CashAmount(salesArray),
-      accountStatus: await AccountStatus(dateKey,userId)|| { error: "No status returned" },
-     loan: await dateWaysDynamic(dateKey, userId, "customerLoan"),
-      collection: await dateWaysDynamic(dateKey, userId, "collectPayment", { invoice: "null" }),
-    })));
+    // Date ways array TODO:
+let formatedDataArray = await Promise.all(Object.entries(formatedData).map(async ([dateKey, salesArray]) => {
+    
+    // --- START DEBUGGING ---
+
+    const totalDiscountedPrice = DiscountPrice(salesArray);
+    const totalSpecialDiscount = await SpecialDiscount(salesArray);
+    const finalSale = totalDiscountedPrice - totalSpecialDiscount;
+    const dueDebug = await DueAmount(salesArray)
+
+    // console.log(`--- Debugging Date: ${dateKey} ---`);
+    // console.log(" Due :", dueDebug);
+    // console.log("Total Price (after item discounts):", totalDiscountedPrice);
+    // console.log("Special Discount for this day:", totalSpecialDiscount);
+    // console.log("Final Net Sale:", finalSale);
+    // console.log("------------------------------------");
+
+    // --- END DEBUGGING ---
+
+    return {
+        date: dateKey,
+        sale: finalSale, // Use the calculated value
+        due: await DueAmount(salesArray),
+        discountedPrice: totalDiscountedPrice, // Reuse the calculated value
+        specialDiscount: totalSpecialDiscount, // Reuse the calculated value
+        cash: await CashAmount(salesArray, dateKey),
+        accountStatus: await AccountStatus(dateKey, userId) || { error: "No status returned" },
+        loan: await dateWaysDynamic(dateKey, userId, "customerLoan"),
+        collection: await dateWaysDynamic(dateKey, userId, "collectPayment", { invoice: "null" }),
+    };
+}));
 
     
     
@@ -328,4 +349,144 @@ const paginateGroupedData = (formatedDataArray, page, pageSize) => {
   };
 };
 
+
+
+
+
+
+
+
+
+// -------------------------------------------------------------------------------------
+
+
+// export async function GET(req) {
+//   try {
+//     const { searchParams } = new URL(req.url);
+//     const userId = parseInt(searchParams.get("userId"));
+//     const page = parseInt(searchParams.get("page")) || 1;
+//     const pageSize = parseInt(searchParams.get("pageSize")) || 10;
+
+//     if (!userId) {
+//       return NextResponse.json({ status: "error", error: "User ID is required." }, { status: 400 });
+//     }
+
+//     // --- Step 1: Get all unique transaction dates for the user to establish pagination ---
+//     const allSaleDates = await prisma.sales.findMany({
+//       where: { customer_id: userId },
+//       select: { created_at: true },
+//       orderBy: { created_at: 'desc' },
+//       distinct: ['created_at'],
+//     });
+    
+//     const uniqueDates = [...new Set(allSaleDates.map(s => s.created_at.toISOString().split('T')[0]))];
+
+//     // --- Step 2: Paginate the unique dates ---
+//     const totalRecords = uniqueDates.length;
+//     const totalPages = Math.ceil(totalRecords / pageSize);
+//     const paginatedDates = uniqueDates.slice((page - 1) * pageSize, page * pageSize);
+
+//     if (paginatedDates.length === 0) {
+//       return NextResponse.json({ status: "ok", data: [], pagination: { currentPage: page, pageSize, totalPages, totalRecords } });
+//     }
+
+//     // --- Step 3: Determine the date range for the current page ---
+//     const pageStartDate = new Date(paginatedDates[paginatedDates.length - 1]);
+//     pageStartDate.setUTCHours(0, 0, 0, 0);
+//     const pageEndDate = new Date(paginatedDates[0]);
+//     pageEndDate.setUTCHours(23, 59, 59, 999);
+
+//     // --- Step 4: Fetch all necessary data for the user in efficient batches ---
+//     const [
+//       salesForPeriod,
+//       // specialDiscountsForPeriod is removed from here to be fetched separately
+//       dueListForPeriod,
+//       paymentsForPeriod,
+//       loansForPeriod,
+//       openingBalanceData
+//     ] = await Promise.all([
+//       // Transactions within the page's date range
+//       prisma.sales.findMany({ where: { customer_id: userId, created_at: { gte: pageStartDate, lte: pageEndDate } } }),
+//       prisma.dueList.findMany({ where: { customer_id: userId, created_at: { gte: pageStartDate, lte: pageEndDate } } }),
+//       prisma.collectPayment.findMany({ where: { customer_id: userId, created_at: { gte: pageStartDate, lte: pageEndDate } } }),
+//       prisma.customerLoan.findMany({ where: { customer_id: userId, created_at: { gte: pageStartDate, lte: pageEndDate } } }),
+//       // Data to calculate the opening balance (everything before the page's start date)
+//       getOpeningBalance(userId, pageStartDate),
+//     ]);
+
+//     // --- FIX: Fetch special discounts based on the invoices from the sales we just fetched ---
+//     const invoicesForPeriod = salesForPeriod.map(sale => sale.invoice);
+//     const specialDiscountsForPeriod = await prisma.specialDiscount.findMany({
+//       where: {
+//         invoice: { in: invoicesForPeriod },
+//         created_at: { gte: pageStartDate, lte: pageEndDate }
+//       }
+//     });
+
+//     // --- Step 5: Process the data day-by-day for the paginated dates ---
+//     let runningBalance = openingBalanceData.amount;
+//     const reportData = paginatedDates.map(dateKey => {
+//       const dayStart = new Date(dateKey);
+//       dayStart.setUTCHours(0, 0, 0, 0);
+//       const dayEnd = new Date(dateKey);
+//       dayEnd.setUTCHours(23, 59, 59, 999);
+
+//       // Filter the pre-fetched data for the current day
+//       const salesToday = salesForPeriod.filter(s => s.created_at >= dayStart && s.created_at <= dayEnd);
+//       const discountsToday = specialDiscountsForPeriod.filter(d => d.created_at >= dayStart && d.created_at <= dayEnd);
+//       const duesToday = dueListForPeriod.filter(d => d.created_at >= dayStart && d.created_at <= dayEnd);
+//       const paymentsToday = paymentsForPeriod.filter(p => p.created_at >= dayStart && p.created_at <= dayEnd);
+//       const loansToday = loansForPeriod.filter(l => l.created_at >= dayStart && l.created_at <= dayEnd);
+
+//       // Calculate daily totals
+//       const totalSale = salesToday.reduce((sum, item) => sum + item.discountedPrice, 0);
+//       const totalSpecialDiscount = discountsToday.reduce((sum, item) => sum + item.amount, 0);
+//       const netSale = totalSale - totalSpecialDiscount;
+      
+//       const totalDue = duesToday.reduce((sum, item) => sum + item.amount, 0);
+//       const totalCash = paymentsToday.reduce((sum, item) => sum + item.amount, 0);
+//       const totalLoan = loansToday.reduce((sum, item) => sum + item.amount, 0);
+      
+//       // Update the running balance
+//       runningBalance += (totalCash - (netSale + totalLoan));
+      
+//       return {
+//         date: dateKey,
+//         sale: netSale,
+//         due: totalDue,
+//         cash: totalCash,
+//         loan: totalLoan,
+//         accountStatus: {
+//           status: runningBalance >= 0 ? "Balance Remaining" : "Due Balance",
+//           amount: Math.abs(runningBalance),
+//         },
+//       };
+//     });
+
+//     return NextResponse.json({
+//       status: "ok",
+//       data: reportData,
+//       pagination: { currentPage: page, pageSize, totalPages, totalRecords },
+//     });
+
+//   } catch (error) {
+//     console.error("Error fetching customer report:", error);
+//     return NextResponse.json({ status: "error", error: "Failed to retrieve report data" }, { status: 500 });
+//   }
+// }
+
+// Helper function to calculate the opening balance before a given date
+async function getOpeningBalance(userId, startDate) {
+  const [totalDue, totalLoan, totalPaid] = await prisma.$transaction([
+    prisma.dueList.aggregate({ where: { customer_id: userId, created_at: { lt: startDate } }, _sum: { amount: true } }),
+    prisma.customerLoan.aggregate({ where: { customer_id: userId, created_at: { lt: startDate } }, _sum: { amount: true } }),
+    prisma.collectPayment.aggregate({ where: { customer_id: userId, created_at: { lt: startDate } }, _sum: { amount: true } }),
+  ]);
+
+  const obligations = (totalDue._sum.amount ?? 0) + (totalLoan._sum.amount ?? 0);
+  const credits = totalPaid._sum.amount ?? 0;
+  const balance = credits - obligations;
+
+  return { amount: balance };
+}
 
