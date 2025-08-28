@@ -198,6 +198,20 @@ export async function GET(req) {
         where: { invoice: { in: invoiceNumbersForDate } }
     });
 
+    //  Isolate invoices that were 'partial' date
+    const partialInvoicesToday = salesWithInvoicesForDate
+        .filter(sale => sale.paymentStatus === 'partial')
+        .map(sale => sale.invoice);
+
+    // 2. Sum only the payments collected against those partial invoices today
+    const partialCashCollectedToday = await prisma.collectPayment.aggregate({
+        where: {
+            ...dateFilter, // Ensure the payment was made today
+            invoice: { in: partialInvoicesToday }
+        },
+        _sum: { amount: true }
+    });
+
     // Calculate the total discount and the discount per category
     const categoryDiscounts = { FEED: 0, MEDICINE: 0, GROCERY: 0 };
     let totalSpecialDiscountForDate = 0;
@@ -212,12 +226,13 @@ export async function GET(req) {
 
     const netSalesForDate = (totalSalesDate._sum.discountedPrice ?? 0) - totalSpecialDiscountForDate;
     const expensesForDate = expensesDate._sum.amount ?? 0;
+    const partialPaymentsAmount = partialCashCollectedToday._sum.amount ?? 0;
     const collectedForDate = collectedPaymentDate._sum.amount ?? 0;
     const availableCashForDate = (netSalesForDate + collectedForDate) - expensesForDate;
 
         // --- NEW CALCULATION FOR TOTAL CASH SALE ---
     const paidSalesAmount = paidSalesDate._sum.discountedPrice ?? 0;
-    const totalCashSale = paidSalesAmount + collectedForDate;
+    const totalCashSale = paidSalesAmount + partialPaymentsAmount;
 
     // --- Process "Up-To-Date" Data ---
     const [totalExpenses, totalCollected, totalLoan, paidSaleInvoices, totalPaidSalesResult] = upToDateData;
