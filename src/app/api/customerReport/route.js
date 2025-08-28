@@ -230,105 +230,109 @@ async function dateWaysDynamic(dateKey, userId, model, conditions = {}, sumField
 }
 
 
-// ---------------------------------- handler section ------------------------------------
+// ---------------------------------- handler section End ------------------------------------
 
 
 
 
 
 // API handler function
-export async function GET(req, res) {
-  try {
+// export async function GET(req, res) {
+//   try {
     
-    const { searchParams } = new URL(req.url);
-    const page = searchParams.get("page");
-    const pageSize = searchParams.get("pageSize");
-    const userId = searchParams.get("userId");
-    const pageInt = page ? parseInt(page) : 1;
-    const pageSizeInt = pageSize ? parseInt(pageSize) : 10;
+//     const { searchParams } = new URL(req.url);
+//     const page = searchParams.get("page");
+//     const pageSize = searchParams.get("pageSize");
+//     const userId = searchParams.get("userId");
+//     const pageInt = page ? parseInt(page) : 1;
+//     const pageSizeInt = pageSize ? parseInt(pageSize) : 10;
+
+//      if (!userId) {
+//       return NextResponse.json({ status: "error", error: "User ID is required." }, { status: 400 });
+//     }
 
 
-    const sales = await prisma.sales.findMany({
-      where: {
-        customer_id: parseInt(userId),
-      },
-      orderBy: {
-        created_at: "desc",
-      },
-    });
+//     const sales = await prisma.sales.findMany({
+//       where: {
+//         customer_id: parseInt(userId),
+//       },
+//       orderBy: {
+//         created_at: "desc",
+//       },
+//     });
     
-    let formatedData = Array();
-    for (const item of sales) {
-      const dateKey = new Date(item.created_at).toISOString().split("T")[0]; // Extract date in YYYY-MM-DD format
-      if (!formatedData[dateKey]) {
-        formatedData[dateKey] = [];
-      }
-      formatedData[dateKey].push(item);
-    }
-
-    
-    // Date ways array TODO:
-let formatedDataArray = await Promise.all(Object.entries(formatedData).map(async ([dateKey, salesArray]) => {
-    
-    // --- START DEBUGGING ---
-
-    const totalDiscountedPrice = DiscountPrice(salesArray);
-    const totalSpecialDiscount = await SpecialDiscount(salesArray);
-    const finalSale = totalDiscountedPrice - totalSpecialDiscount;
-    const dueDebug = await DueAmount(salesArray)
-
-    // console.log(`--- Debugging Date: ${dateKey} ---`);
-    // console.log(" Due :", dueDebug);
-    // console.log("Total Price (after item discounts):", totalDiscountedPrice);
-    // console.log("Special Discount for this day:", totalSpecialDiscount);
-    // console.log("Final Net Sale:", finalSale);
-    // console.log("------------------------------------");
-
-    // --- END DEBUGGING ---
-
-    return {
-        date: dateKey,
-        sale: finalSale, // Use the calculated value
-        due: await DueAmount(salesArray),
-        discountedPrice: totalDiscountedPrice, // Reuse the calculated value
-        specialDiscount: totalSpecialDiscount, // Reuse the calculated value
-        cash: await CashAmount(salesArray, dateKey),
-        accountStatus: await AccountStatus(dateKey, userId) || { error: "No status returned" },
-        loan: await dateWaysDynamic(dateKey, userId, "customerLoan"),
-        collection: await dateWaysDynamic(dateKey, userId, "collectPayment", { invoice: "null" }),
-    };
-}));
+//     let formatedData = Array();
+//     for (const item of sales) {
+//       const dateKey = new Date(item.created_at).toISOString().split("T")[0]; // Extract date in YYYY-MM-DD format
+//       if (!formatedData[dateKey]) {
+//         formatedData[dateKey] = [];
+//       }
+//       formatedData[dateKey].push(item);
+//     }
 
     
+//     // Date ways array TODO:
+// let formatedDataArray = await Promise.all(Object.entries(formatedData).map(async ([dateKey, salesArray]) => {
     
-    // Paginate the grouped data
-    const { paginatedData, totalRecords, totalPages } = paginateGroupedData(
-      formatedDataArray,
-      pageInt,
-      pageSizeInt
-    );
-    // console.log(paginatedData)
-      return NextResponse.json({
-        status: "ok",
-        data: paginatedData,
-        pagination: {
-          currentPage: pageInt,
-          pageSize: pageSizeInt,
-          totalPages: totalPages,
-          totalRecords: totalRecords,
-        },
-      });
-  } catch (error) {
-    console.error("Error fetching sales data:", error);
-    return NextResponse.json(
-      {
-        status: "error",
-        error: "Failed to retrieve sales data",
-      },
-      { status: 500 }
-    );
-  }
-}
+//     // --- START DEBUGGING ---
+
+//     const totalDiscountedPrice = DiscountPrice(salesArray);
+//     const totalSpecialDiscount = await SpecialDiscount(salesArray);
+//     const finalSale = totalDiscountedPrice - totalSpecialDiscount;
+//     const dueDebug = await DueAmount(salesArray)
+
+//     // console.log(`--- Debugging Date: ${dateKey} ---`);
+//     // console.log(" Due :", dueDebug);
+//     // console.log("Total Price (after item discounts):", totalDiscountedPrice);
+//     // console.log("Special Discount for this day:", totalSpecialDiscount);
+//     // console.log("Final Net Sale:", finalSale);
+//     // console.log("------------------------------------");
+
+//     // --- END DEBUGGING ---
+
+//     return {
+//         date: dateKey,
+//         sale: finalSale, // Use the calculated value
+//         due: await DueAmount(salesArray),
+//         discountedPrice: totalDiscountedPrice, // Reuse the calculated value
+//         specialDiscount: totalSpecialDiscount, // Reuse the calculated value
+//         cash: await CashAmount(salesArray, dateKey),
+//         accountStatus: await AccountStatus(dateKey, userId) || { error: "No status returned" },
+//         loan: await dateWaysDynamic(dateKey, userId, "customerLoan"),
+//         collection: await dateWaysDynamic(dateKey, userId, "collectPayment", { invoice: "null" }),
+//     };
+// }));
+
+    
+    
+//     // Paginate the grouped data
+//     const { paginatedData, totalRecords, totalPages } = paginateGroupedData(
+//       formatedDataArray,
+//       pageInt,
+//       pageSizeInt
+//     );
+//     // console.log(paginatedData)
+//       return NextResponse.json({
+//         status: "ok",
+//         data: paginatedData,
+//         pagination: {
+//           currentPage: pageInt,
+//           pageSize: pageSizeInt,
+//           totalPages: totalPages,
+//           totalRecords: totalRecords,
+//         },
+//       });
+//   } catch (error) {
+//     console.error("Error fetching sales data:", error);
+//     return NextResponse.json(
+//       {
+//         status: "error",
+//         error: "Failed to retrieve sales data",
+//       },
+//       { status: 500 }
+//     );
+//   }
+// }
 
 
 // Helper function to paginate the grouped data
@@ -360,120 +364,86 @@ const paginateGroupedData = (formatedDataArray, page, pageSize) => {
 // -------------------------------------------------------------------------------------
 
 
-// export async function GET(req) {
-//   try {
-//     const { searchParams } = new URL(req.url);
-//     const userId = parseInt(searchParams.get("userId"));
-//     const page = parseInt(searchParams.get("page")) || 1;
-//     const pageSize = parseInt(searchParams.get("pageSize")) || 10;
+export async function GET(req) {
+  try {
+    const { searchParams } = new URL(req.url);
+    const userId = parseInt(searchParams.get("userId"));
+    const page = parseInt(searchParams.get("page")) || 1;
+    const pageSize = parseInt(searchParams.get("pageSize")) || 10;
 
-//     if (!userId) {
-//       return NextResponse.json({ status: "error", error: "User ID is required." }, { status: 400 });
-//     }
+    if (!userId) {
+      return NextResponse.json({ status: "error", error: "User ID is required." }, { status: 400 });
+    }
 
-//     // --- Step 1: Get all unique transaction dates for the user to establish pagination ---
-//     const allSaleDates = await prisma.sales.findMany({
-//       where: { customer_id: userId },
-//       select: { created_at: true },
-//       orderBy: { created_at: 'desc' },
-//       distinct: ['created_at'],
-//     });
-    
-//     const uniqueDates = [...new Set(allSaleDates.map(s => s.created_at.toISOString().split('T')[0]))];
+    // --- Step 1: Fetch all transaction dates from all relevant tables ---
+    const [saleDates, paymentDates, loanDates] = await Promise.all([
+        prisma.sales.findMany({ where: { customer_id: userId }, select: { created_at: true } }),
+        prisma.collectPayment.findMany({ where: { customer_id: userId }, select: { created_at: true } }),
+        prisma.customerLoan.findMany({ where: { customer_id: userId }, select: { created_at: true } }),
+    ]);
 
-//     // --- Step 2: Paginate the unique dates ---
-//     const totalRecords = uniqueDates.length;
-//     const totalPages = Math.ceil(totalRecords / pageSize);
-//     const paginatedDates = uniqueDates.slice((page - 1) * pageSize, page * pageSize);
+    const allDates = [
+        ...saleDates.map(d => d.created_at.toISOString().split('T')[0]),
+        ...paymentDates.map(d => d.created_at.toISOString().split('T')[0]),
+        ...loanDates.map(d => d.created_at.toISOString().split('T')[0]),
+    ];
 
-//     if (paginatedDates.length === 0) {
-//       return NextResponse.json({ status: "ok", data: [], pagination: { currentPage: page, pageSize, totalPages, totalRecords } });
-//     }
+    // Get unique dates and sort them in descending order
+    const uniqueDates = [...new Set(allDates)].sort((a, b) => new Date(b) - new Date(a));
 
-//     // --- Step 3: Determine the date range for the current page ---
-//     const pageStartDate = new Date(paginatedDates[paginatedDates.length - 1]);
-//     pageStartDate.setUTCHours(0, 0, 0, 0);
-//     const pageEndDate = new Date(paginatedDates[0]);
-//     pageEndDate.setUTCHours(23, 59, 59, 999);
+    // --- Step 2: Fetch all transactions for the user ---
+    // This is more efficient than fetching inside the loop
+    const allSales = await prisma.sales.findMany({
+        where: { customer_id: userId },
+        orderBy: { created_at: "desc" },
+    });
 
-//     // --- Step 4: Fetch all necessary data for the user in efficient batches ---
-//     const [
-//       salesForPeriod,
-//       // specialDiscountsForPeriod is removed from here to be fetched separately
-//       dueListForPeriod,
-//       paymentsForPeriod,
-//       loansForPeriod,
-//       openingBalanceData
-//     ] = await Promise.all([
-//       // Transactions within the page's date range
-//       prisma.sales.findMany({ where: { customer_id: userId, created_at: { gte: pageStartDate, lte: pageEndDate } } }),
-//       prisma.dueList.findMany({ where: { customer_id: userId, created_at: { gte: pageStartDate, lte: pageEndDate } } }),
-//       prisma.collectPayment.findMany({ where: { customer_id: userId, created_at: { gte: pageStartDate, lte: pageEndDate } } }),
-//       prisma.customerLoan.findMany({ where: { customer_id: userId, created_at: { gte: pageStartDate, lte: pageEndDate } } }),
-//       // Data to calculate the opening balance (everything before the page's start date)
-//       getOpeningBalance(userId, pageStartDate),
-//     ]);
+    // --- Step 3: Group transactions by date ---
+    const transactionsByDate = {}; // sales
+    allSales.forEach(item => {
+        const dateKey = item.created_at.toISOString().split('T')[0];
+        if (!transactionsByDate[dateKey]) transactionsByDate[dateKey] = [];
+        transactionsByDate[dateKey].push(item);
+    });
 
-//     // --- FIX: Fetch special discounts based on the invoices from the sales we just fetched ---
-//     const invoicesForPeriod = salesForPeriod.map(sale => sale.invoice);
-//     const specialDiscountsForPeriod = await prisma.specialDiscount.findMany({
-//       where: {
-//         invoice: { in: invoicesForPeriod },
-//         created_at: { gte: pageStartDate, lte: pageEndDate }
-//       }
-//     });
+    // --- Step 4: Map over unique dates and calculate daily summaries ---
+    let reportData = await Promise.all(uniqueDates.map(async (dateKey) => {
+        const salesArray = transactionsByDate[dateKey] || []; // Get sales for the day, or an empty array if none
+        
+        const totalDiscountedPrice = DiscountPrice(salesArray);
+        const totalSpecialDiscount = await SpecialDiscount(salesArray);
+        const finalSale = totalDiscountedPrice - totalSpecialDiscount;
 
-//     // --- Step 5: Process the data day-by-day for the paginated dates ---
-//     let runningBalance = openingBalanceData.amount;
-//     const reportData = paginatedDates.map(dateKey => {
-//       const dayStart = new Date(dateKey);
-//       dayStart.setUTCHours(0, 0, 0, 0);
-//       const dayEnd = new Date(dateKey);
-//       dayEnd.setUTCHours(23, 59, 59, 999);
+        return {
+            date: dateKey,
+            sale: finalSale,
+            due: await DueAmount(salesArray),
+            cash: await CashAmount(salesArray),
+            accountStatus: await AccountStatus(dateKey, userId),
+            loan: await dateWaysDynamic(dateKey, userId, "customerLoan"),
+            collection: await dateWaysDynamic(dateKey, userId, "collectPayment", { invoice: "null" }),
+        };
+    }));
 
-//       // Filter the pre-fetched data for the current day
-//       const salesToday = salesForPeriod.filter(s => s.created_at >= dayStart && s.created_at <= dayEnd);
-//       const discountsToday = specialDiscountsForPeriod.filter(d => d.created_at >= dayStart && d.created_at <= dayEnd);
-//       const duesToday = dueListForPeriod.filter(d => d.created_at >= dayStart && d.created_at <= dayEnd);
-//       const paymentsToday = paymentsForPeriod.filter(p => p.created_at >= dayStart && p.created_at <= dayEnd);
-//       const loansToday = loansForPeriod.filter(l => l.created_at >= dayStart && l.created_at <= dayEnd);
+    // --- Step 5: Paginate the final report data ---
+    const totalRecords = reportData.length;
+    const totalPages = Math.ceil(totalRecords / pageSize);
+    const paginatedData = reportData.slice((page - 1) * pageSize, page * pageSize);
 
-//       // Calculate daily totals
-//       const totalSale = salesToday.reduce((sum, item) => sum + item.discountedPrice, 0);
-//       const totalSpecialDiscount = discountsToday.reduce((sum, item) => sum + item.amount, 0);
-//       const netSale = totalSale - totalSpecialDiscount;
-      
-//       const totalDue = duesToday.reduce((sum, item) => sum + item.amount, 0);
-//       const totalCash = paymentsToday.reduce((sum, item) => sum + item.amount, 0);
-//       const totalLoan = loansToday.reduce((sum, item) => sum + item.amount, 0);
-      
-//       // Update the running balance
-//       runningBalance += (totalCash - (netSale + totalLoan));
-      
-//       return {
-//         date: dateKey,
-//         sale: netSale,
-//         due: totalDue,
-//         cash: totalCash,
-//         loan: totalLoan,
-//         accountStatus: {
-//           status: runningBalance >= 0 ? "Balance Remaining" : "Due Balance",
-//           amount: Math.abs(runningBalance),
-//         },
-//       };
-//     });
+    return NextResponse.json({
+      status: "ok",
+      data: paginatedData,
+      pagination: { currentPage: page, pageSize, totalPages, totalRecords },
+    });
 
-//     return NextResponse.json({
-//       status: "ok",
-//       data: reportData,
-//       pagination: { currentPage: page, pageSize, totalPages, totalRecords },
-//     });
+  } catch (error) {
+    console.error("Error fetching customer report:", error);
+    return NextResponse.json({ status: "error", error: "Failed to retrieve report data" }, { status: 500 });
+  }
+}
 
-//   } catch (error) {
-//     console.error("Error fetching customer report:", error);
-//     return NextResponse.json({ status: "error", error: "Failed to retrieve report data" }, { status: 500 });
-//   }
-// }
+
+
 
 // Helper function to calculate the opening balance before a given date
 async function getOpeningBalance(userId, startDate) {

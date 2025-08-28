@@ -208,6 +208,7 @@ export async function GET(req) {
         }
         totalSpecialDiscountForDate += discount.amount;
     });
+    // console.log("test ",totalSpecialDiscountForDate)
 
     const netSalesForDate = (totalSalesDate._sum.discountedPrice ?? 0) - totalSpecialDiscountForDate;
     const expensesForDate = expensesDate._sum.amount ?? 0;
@@ -244,6 +245,8 @@ export async function GET(req) {
     const feedNet = (findCategory("FEED").discountedPrice ?? 0) - (categoryDiscounts.FEED ?? 0);
     const medicineNet = (findCategory("MEDICINE").discountedPrice ?? 0) - (categoryDiscounts.MEDICINE ?? 0);
     const groceryNet = (findCategory("GROCERY").discountedPrice ?? 0) - (categoryDiscounts.GROCERY ?? 0);
+    // console.log("medicine Discount ",categoryDiscounts.MEDICINE)
+    // console.log("medicine ",findCategory("MEDICINE").discountedPrice)
 
     return NextResponse.json({
       status: "ok",

@@ -165,3 +165,20 @@ enum paymentStatus {
   paid
   partial
 }
+
+
+
+model salesReturn {
+  id              Int      @id @default(autoincrement())
+  originalSaleId  Int
+  invoice String?
+  productId       Int
+  productName     String
+  quantity        Float
+  totalpacket     Float?
+  returnAmount    Float
+  reason          String?
+  created_at      DateTime @default(now())
+
+  @@index([originalSaleId])
+}
