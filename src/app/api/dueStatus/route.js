@@ -19,7 +19,7 @@ export async function GET(req, res) {
             amount:true
         }
     });
-    const totalCustomerDue = parseFloat(totalDue._sum.amount);
+    const totalCustomerDue = parseFloat(totalDue._sum.amount)||0;
 
     // total collect for partial payment
     const collectPayment = await prisma.collectPayment.aggregate({
@@ -30,7 +30,7 @@ export async function GET(req, res) {
             amount:true
         }
     });
-    const totalCustomerDueCollection = parseFloat(collectPayment._sum.amount);
+    const totalCollection = parseFloat(collectPayment._sum.amount);
 
     // total due from due list 
     const totalLoan = await prisma.customerLoan.aggregate({
@@ -58,7 +58,7 @@ export async function GET(req, res) {
     const totalAdvancedCash = parseFloat(advancedCash._sum.amount ||0);
     
     // make status
-    if(parseInt(totalAdvancedCash) > getFromCustomerAmount) {
+    if(parseFloat(totalAdvancedCash) > parseFloat(getFromCustomerAmount)) {
         return NextResponse.json({ status: "ok", data: {status: "Balance Remeang",amount:(parseInt(totalAdvancedCash) -  getFromCustomerAmount)} });
     } else{
         return NextResponse.json({ status: "ok", data: {status: "Due Balance",amount:(parseInt(totalAdvancedCash) -  getFromCustomerAmount)} });
