@@ -88,7 +88,7 @@ async function DueAmount(sales) {
   })
   const partialDueAmount = parseFloat(partialDue._sum.amount)||0;
   const finalDueAmount = partialDueAmount + dueAmount;
-  return finalDueAmount;
+  return finalDueAmount.toFixed(2)||0;
 }
 
 
@@ -121,7 +121,7 @@ async function CashAmount(sales,dateKey) {
   const finalPaidAmount = partialPaidAmount + paidAmount;
   // console.log(sales)
   //  console.log(`Date: ${dateKey}, Final Paid Amount: ${partialPaidAmount}`);
-  return finalPaidAmount;
+  return finalPaidAmount.toFixed(2) ||0;
 }
 
 // account status
@@ -184,8 +184,8 @@ async function AccountStatus(dateKey,userId) {
 
     return {
       status: balanceAmount >= 0 ? "Balance Remaining" : "Due Balance",
-      amount: Math.abs(balanceAmount), 
-      isCredit: balanceAmount >= 0 // Boolean flag for easy checking
+      amount: (Math.abs(balanceAmount)).toFixed(2), 
+      isCredit: balanceAmount >= 0 
     };
    
   } catch (error) {

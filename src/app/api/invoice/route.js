@@ -17,6 +17,7 @@ export async function GET(req) {
     const sales = await prisma.sales.findMany({
       where: { invoice: invoiceId },
       include: {
+        // products:true,
         customers: true, // This fetches the related customer data
       },
     });
@@ -25,6 +26,18 @@ export async function GET(req) {
       return NextResponse.json({ status: "error", error: "Invoice not found." }, { status: 404 });
     }
     
+    // --- NEW LOGIC TO FETCH UNIT PRICES ---
+    // a. Get all unique product IDs from the sales records
+    const productIds = [...new Set(sales.map(sale => sale.productId))];
+
+    // b. Fetch the corresponding products to get their unit prices
+    const products = await prisma.products.findMany({
+        where: { id: { in: productIds } },
+        select: { id: true, unitPrice: true }
+    });
+
+    // c. Create a simple map for easy lookup (productId -> unitPrice)
+    const unitPriceMap = new Map(products.map(p => [p.id, p.unitPrice]));
     
     // 2. Fetch any special discount associated with this invoice
     const specialDiscount = await prisma.specialDiscount.findFirst({
@@ -48,6 +61,7 @@ export async function GET(req) {
     const cashAmount = cash._sum.amount
 
     const customer = sales[0].customers;
+
 
     // 3. Calculate totals
     const subTotal = sales.reduce((acc, item) => acc + item.discountedPrice, 0);
@@ -73,14 +87,18 @@ export async function GET(req) {
         phone: customer.phone,
       },
       
-      products: sales.map(sale => ({
-        id: sale.productId,
+      products: sales.map(sale => {
+        const baseUnitPrice = unitPriceMap.get(sale.productId) || 0;
+        const perPacketValue = sale.perPacket || 0;
+        
+       return{ id: sale.productId,
         name: sale.productName,
         discount:sale.discount||0,
         description: sale.subCategory || '',
         discountedPrice: sale.discountedPrice ||0, // Calculate the per-item rate
         quantity: sale.category === "FEED" ? sale.totalpacket :sale.quantity,
-      })),
+        unitPrice:(perPacketValue > 0 ? baseUnitPrice * perPacketValue : baseUnitPrice).toFixed(2), // Calculate the packet price
+      }}),
 
       subTotal: subTotal,
       discount: totalDiscount,
@@ -91,7 +109,6 @@ export async function GET(req) {
     };
 
     return NextResponse.json({ status: "ok", data: invoiceData });
-
   } catch (error) {
     console.error("Invoice API error:", error.message);
     return NextResponse.json({

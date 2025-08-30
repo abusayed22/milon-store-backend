@@ -8,7 +8,7 @@ const prisma = new PrismaClient();
 // get all sub-category by category
 export async function GET (req,res) {
     try {
-      const category =  await prisma.subCategory.findMany()
+      const category =  await prisma.subCategory.findMany({select:{id:true,name:true}});
       return NextResponse.json({ status: "ok", data: category });
     } catch (error) {
       console.log("Sub-category fetch error :" + error.message);

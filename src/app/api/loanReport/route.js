@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { DateTime } from "luxon";
 import { NextResponse } from "next/server";
 
 const prisma = new PrismaClient();
@@ -15,49 +16,35 @@ export async function GET(req, res) {
     const page = Number(current);
     const limit = Number(pageSize);
 
-    // ✅ Parse Compact Date (e.g., '241223' → '2024-12-23')
-    const parseCompactDate = (compactDate) => {
-      if (!compactDate || compactDate.length !== 6) return null;
+    const timeZone = "Asia/Dhaka";
+    let gte, lte;
 
-      const year = 2000 + parseInt(compactDate.slice(0, 2), 10); // '24' → 2024
-      const month = parseInt(compactDate.slice(2, 4), 10) - 1; // '12' → 11 (zero-based)
-      const day = parseInt(compactDate.slice(4, 6), 10); // '28' → 28
-
-      // Start of the day (00:00:00.000 UTC)
-      const localDate = new Date(year, month, day); // Local date
-      return new Date(
-        Date.UTC(
-          localDate.getFullYear(),
-          localDate.getMonth(),
-          localDate.getDate()
-        )
-      );
+    // --- ROBUST DATE PARSING ---
+    const parseDate = (dateString) => {
+      if (!dateString || dateString.length !== 6) return null;
+      // Use fromFormat to explicitly tell Luxon the expected format is "yyMMdd"
+      return DateTime.fromFormat(dateString, "yyMMdd", { zone: timeZone });
     };
 
-    // Parse Dates
-    const start = parseCompactDate(startDate);
-    let end = parseCompactDate(endDate);
+    const startDt = parseDate(startDate);
+    const endDt = parseDate(endDate);
 
-    if (end) {
-      end = new Date(
-        Date.UTC(
-          end.getUTCFullYear(),
-          end.getUTCMonth(),
-          end.getUTCDate(),
-          23,
-          59,
-          59,
-          999
-        )
-      );
+    if (startDt && startDt.isValid && endDt && endDt.isValid) {
+      gte = startDt.startOf("day").toJSDate();
+      lte = endDt.endOf("day").toJSDate();
+    } else {
+      // Default to the current day if params are missing or invalid
+      const nowInDhaka = DateTime.now().setZone(timeZone);
+      gte = nowInDhaka.startOf("day").toJSDate();
+      lte = nowInDhaka.endOf("day").toJSDate();
     }
 
     // fetch expense from the database with pagination
     const expenseQuery = {
       where: {
         created_at: {
-          gte: start || undefined,
-          lte: end || undefined,
+          gte,
+          lte,
         },
       },
       skip: (page - 1) * limit,
@@ -65,14 +52,14 @@ export async function GET(req, res) {
       orderBy: {
         created_at: "desc",
       },
-      include:{
-        customer:{
-            select:{
-                id:true,
-                name:true
-            }
-        }
-      }
+      include: {
+        customer: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
     };
     const loans = await prisma.customerLoan.findMany(expenseQuery);
 
@@ -80,8 +67,8 @@ export async function GET(req, res) {
     const totalLoans = await prisma.customerLoan.count({
       where: {
         created_at: {
-          gte: start || undefined,
-          lte: end || undefined,
+          gte,
+          lte,
         },
       },
     });

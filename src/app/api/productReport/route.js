@@ -5,11 +5,10 @@ import { NextResponse } from "next/server";
 
 const prisma = new PrismaClient();
 
-
 const getStockSummaryWithDateFilter = async (startDate, endDate) => {
   // Get product history within date range with aggregation
   const stockHistory = await prisma.productHistory.groupBy({
-    by: ['productId'],
+    by: ["productId"],
     where: {
       created_at: {
         gte: startDate,
@@ -29,7 +28,7 @@ const getStockSummaryWithDateFilter = async (startDate, endDate) => {
   const productDetails = await prisma.products.findMany({
     where: {
       id: {
-        in: stockHistory.map(item => item.productId),
+        in: stockHistory.map((item) => item.productId),
       },
       stock: true,
     },
@@ -42,9 +41,9 @@ const getStockSummaryWithDateFilter = async (startDate, endDate) => {
   });
 
   // Combine data
-  const summary = productDetails.map(product => {
-    const history = stockHistory.find(item => item.productId === product.id);
-    
+  const summary = productDetails.map((product) => {
+    const history = stockHistory.find((item) => item.productId === product.id);
+
     return {
       productId: product.id,
       productName: product.name,
@@ -58,8 +57,6 @@ const getStockSummaryWithDateFilter = async (startDate, endDate) => {
 
   return summary;
 };
-
-
 
 // get all sub-category by category
 // export async function GET(req, res) {
@@ -138,7 +135,6 @@ const getStockSummaryWithDateFilter = async (startDate, endDate) => {
 //       },
 //     });
 //     // console.log(productHistory)
- 
 
 //     const currentStock = await prisma.products.findMany({
 //       where: {
@@ -198,7 +194,6 @@ const getStockSummaryWithDateFilter = async (startDate, endDate) => {
 //         const totalTransferPacket = parseFloat(transferProductQuntity._sum.totalpacket || 0);
 //         const totalTransferQty = parseFloat(transferProductQuntity._sum.quantity || 0);
 
-  
 //         // total product stock by date
 //         const dateByStock = await prisma.products.aggregate({
 //           where: {
@@ -215,7 +210,6 @@ const getStockSummaryWithDateFilter = async (startDate, endDate) => {
 //         });
 //         const totalStockPacket = parseFloat(dateByStock._sum.totalpacket || 0);
 //         const totalStockQty = parseFloat(dateByStock._sum.quantity || 0);
-      
 
 //         // Calculate the total packets added for this specific product
 //         const totalAddPacket = historyEntriesForProduct.reduce((sum, entry) => {
@@ -242,7 +236,6 @@ const getStockSummaryWithDateFilter = async (startDate, endDate) => {
 //             return sum + totalQuantityValue;
 //           }
 //         }, 0);
-
 
 //         // Optional: Calculate other values like total quantity, total stock, etc.
 //         const totalAddProductQty = historyEntriesForProduct.reduce(
@@ -286,9 +279,6 @@ const getStockSummaryWithDateFilter = async (startDate, endDate) => {
 //     });
 //   }
 // }
-
-
-
 
 // export async function GET(req, res) {
 //   try {
@@ -366,7 +356,6 @@ const getStockSummaryWithDateFilter = async (startDate, endDate) => {
 //       },
 //     });
 
-
 //     //  Fetch previously Product History Data for Date Range
 //     // const previousProductHistory = await prisma.productHistory.findMany({
 //     //   where: {
@@ -400,8 +389,6 @@ const getStockSummaryWithDateFilter = async (startDate, endDate) => {
 //         stock: true,
 //       },
 //     });
-    
-
 
 //     // calculate summary report
 //     const totalproductsSummary = await Promise.all(
@@ -410,7 +397,7 @@ const getStockSummaryWithDateFilter = async (startDate, endDate) => {
 //         const historyEntriesForProduct = productHistory.filter((history) => {
 //           return history.productId === product.id;
 //         });
-        
+
 //         // console.log("historyEntry ",historyEntriesForProduct)
 //         // Filter the previously history entries for this specific product
 //         // const previouslyHistoryEntriesForProduct = productHistory.filter((history) => {
@@ -434,7 +421,7 @@ const getStockSummaryWithDateFilter = async (startDate, endDate) => {
 //         });
 //         const totalSalePacket = parseFloat( saleProductQuntity._sum.totalpacket || 0);
 //         const totalSaleQty = parseFloat(saleProductQuntity._sum.quantity || 0);
-        
+
 //         // Fetch the Previously product with product id for its sales calculation
 //         const perviouslySaleProductQuntity = await prisma.sales.aggregate({
 //           where: {
@@ -469,7 +456,7 @@ const getStockSummaryWithDateFilter = async (startDate, endDate) => {
 //         });
 //         const totalTransferPacket = parseFloat(transferProductQuntity._sum.totalpacket || 0);
 //         const totalTransferQty = parseFloat(transferProductQuntity._sum.quantity || 0);
-        
+
 //         // Previously transfer products
 //         const previouslyTransferProductQuntity = await prisma.productTransferList.aggregate({
 //           where: {
@@ -487,7 +474,6 @@ const getStockSummaryWithDateFilter = async (startDate, endDate) => {
 //         });
 //         const previouslyTotalTransferPacket = parseFloat(previouslyTransferProductQuntity._sum.totalpacket || 0);
 //         const previouslyTotalTransferQty = parseFloat(previouslyTransferProductQuntity._sum.quantity || 0);
-
 
 //     // total product stock by date
 //         const dateByStock = await prisma.products.aggregate({
@@ -524,7 +510,6 @@ const getStockSummaryWithDateFilter = async (startDate, endDate) => {
 //         });
 //         const totalPrevStockPacket = parseFloat(previuslyProductHistory._sum.totalpacket || 0);
 //         const totalPrevStockQty = parseFloat(previuslyProductHistory._sum.quantity || 0);
-      
 
 //         // Calculate the total packets added for this specific product
 //         const totalAddPacket = historyEntriesForProduct.reduce((sum, entry) => {
@@ -552,13 +537,12 @@ const getStockSummaryWithDateFilter = async (startDate, endDate) => {
 //           }
 //         }, 0);
 
-
 //         // Optional: Calculate other values like total quantity, total stock, etc.
 //         const totalAddProductQty = historyEntriesForProduct.reduce(
 //           (sum, entry) => sum + (entry.quantity || 0),
 //           0
 //         );
-        
+
 //         // Previously total add product packet calculation
 //         // const PreviouslyTotalAddPacket = historyEntriesForProduct.reduce((sum, entry) => {
 //         //   const totalpacketValue = parseFloat(entry.totalpacket);
@@ -585,7 +569,6 @@ const getStockSummaryWithDateFilter = async (startDate, endDate) => {
 //         //   }
 //         // }, 0);
 
-
 //         // Optional: Previously Calculate other values like total quantity, total stock, etc.
 //         // const previouslyTotalAddProductQty = previouslyHistoryEntriesForProduct.reduce(
 //         //   (sum, entry) => sum + (entry.quantity || 0),
@@ -593,7 +576,6 @@ const getStockSummaryWithDateFilter = async (startDate, endDate) => {
 //         // );
 //         // console.log(`paket:${totalAddPacket} qty:${totalAddProductQty}`)
 //         console.log(`${product.name} :`,totalPrevStockPacket ,totalPrevStockQty, `prevSale: ${previousTotalSalePacket} || prevTrasnfer:${previouslyTotalTransferPacket}`)
-
 
 //         return {
 //           productName: product.name,
@@ -617,7 +599,7 @@ const getStockSummaryWithDateFilter = async (startDate, endDate) => {
 //           prevStockQty: (totalPrevStockQty)-(previouslyTotalSaleQty +previouslyTotalTransferQty),
 
 //           stockPacket: (totalAddPacket) - (totalSalePacket+totalTransferPacket),
-//           // stockQty: 
+//           // stockQty:
 //         };
 //       })
 //     );
@@ -640,7 +622,6 @@ const getStockSummaryWithDateFilter = async (startDate, endDate) => {
 //   }
 // }
 
-
 export async function GET(req) {
   try {
     const url = new URL(req.url);
@@ -652,12 +633,11 @@ export async function GET(req) {
     const timeZone = "Asia/Dhaka";
     let gte, lte;
 
-
- // --- ROBUST DATE PARSING ---
-const parseDate = (dateString) => {
+    // --- ROBUST DATE PARSING ---
+    const parseDate = (dateString) => {
       if (!dateString || dateString.length !== 6) return null;
       // Use fromFormat to explicitly tell Luxon the expected format is "yyMMdd"
-      return DateTime.fromFormat(dateString, 'yyMMdd', { zone: timeZone });
+      return DateTime.fromFormat(dateString, "yyMMdd", { zone: timeZone });
     };
 
     const startDt = parseDate(startDateParam);
@@ -672,7 +652,6 @@ const parseDate = (dateString) => {
       gte = nowInDhaka.startOf("day").toJSDate();
       lte = nowInDhaka.endOf("day").toJSDate();
     }
-
 
     // --- DEFINE ALL NECESSARY DATE FILTERS ---
     // 1. For transactions BEFORE the start date (to calculate previous stock)
@@ -696,31 +675,69 @@ const parseDate = (dateString) => {
       // Data for Closing Stock
       additionsUpToDate,
       salesUpToDate,
-      transfersUpToDate
+      transfersUpToDate,
     ] = await Promise.all([
-      prisma.products.findMany({ select: { id: true, name: true, category: true, subCategory: true } }),
+      prisma.products.findMany({
+        select: { id: true, name: true, category: true, subCategory: true },
+      }),
       // Previous Stock Queries
-      prisma.productHistory.groupBy({ by: ['productId'], where: upToStartDateFilter, _sum: { quantity: true, totalpacket: true } }),
-      prisma.sales.groupBy({ by: ['productId'], where: upToStartDateFilter, _sum: { quantity: true, totalpacket: true } }),
-      prisma.productTransferList.groupBy({ by: ['productId'], where: upToStartDateFilter, _sum: { quantity: true, totalpacket: true } }),
+      prisma.productHistory.groupBy({
+        by: ["productId"],
+        where: upToStartDateFilter,
+        _sum: { quantity: true, totalpacket: true },
+      }),
+      prisma.sales.groupBy({
+        by: ["productId"],
+        where: upToStartDateFilter,
+        _sum: { quantity: true, totalpacket: true },
+      }),
+      prisma.productTransferList.groupBy({
+        by: ["productId"],
+        where: upToStartDateFilter,
+        _sum: { quantity: true, totalpacket: true },
+      }),
       // Period Queries
-      prisma.productHistory.groupBy({ by: ['productId'], where: dateRangeFilter, _sum: { quantity: true, totalpacket: true } }),
-      prisma.sales.groupBy({ by: ['productId'], where: dateRangeFilter, _sum: { quantity: true, totalpacket: true } }),
-      prisma.productTransferList.groupBy({ by: ['productId'], where: dateRangeFilter, _sum: { quantity: true, totalpacket: true } }),
+      prisma.productHistory.groupBy({
+        by: ["productId"],
+        where: dateRangeFilter,
+        _sum: { quantity: true, totalpacket: true },
+      }),
+      prisma.sales.groupBy({
+        by: ["productId"],
+        where: dateRangeFilter,
+        _sum: { quantity: true, totalpacket: true },
+      }),
+      prisma.productTransferList.groupBy({
+        by: ["productId"],
+        where: dateRangeFilter,
+        _sum: { quantity: true, totalpacket: true },
+      }),
       // Closing Stock Queries
-      prisma.productHistory.groupBy({ by: ['productId'], where: upToDateFilter, _sum: { quantity: true, totalpacket: true } }),
-      prisma.sales.groupBy({ by: ['productId'], where: upToDateFilter, _sum: { quantity: true, totalpacket: true } }),
-      prisma.productTransferList.groupBy({ by: ['productId'], where: upToDateFilter, _sum: { quantity: true, totalpacket: true } }),
+      prisma.productHistory.groupBy({
+        by: ["productId"],
+        where: upToDateFilter,
+        _sum: { quantity: true, totalpacket: true },
+      }),
+      prisma.sales.groupBy({
+        by: ["productId"],
+        where: upToDateFilter,
+        _sum: { quantity: true, totalpacket: true },
+      }),
+      prisma.productTransferList.groupBy({
+        by: ["productId"],
+        where: upToDateFilter,
+        _sum: { quantity: true, totalpacket: true },
+      }),
     ]);
-    
 
     // --- 2. PROCESS AND CALCULATE THE REPORT FOR EACH PRODUCT ---
-    const reportData = allProducts.map(product => {
-      const isFeed = product.category === 'FEED';
+    const reportData = allProducts.map((product) => {
+      const isFeed = product.category === "FEED";
 
       // Helper function to find and sum quantities
       const getSum = (dataArray, productId) => {
-        const item = dataArray.find(d => d.productId === productId)?._sum || {};
+        const item =
+          dataArray.find((d) => d.productId === productId)?._sum || {};
         return (isFeed ? item.totalpacket : item.quantity) ?? 0;
       };
 
@@ -737,7 +754,6 @@ const parseDate = (dateString) => {
       const periodStock = addedQty - soldQty - transferredQty;
       // console.log("addedQty ",addedQty)
 
-      
       // Calculate Closing Stock
       const totalAdded = getSum(additionsUpToDate, product.id);
       const totalSold = getSum(salesUpToDate, product.id);
@@ -758,7 +774,7 @@ const parseDate = (dateString) => {
     });
 
     reportData.sort((a, b) => a.productName.localeCompare(b.productName));
-    
+
     // --- 3. APPLY PAGINATION ---
     const paginatedData = reportData.slice((page - 1) * limit, page * limit);
     const totalRecords = reportData.length;
@@ -770,14 +786,14 @@ const parseDate = (dateString) => {
       totalPage,
       totalRecords,
     });
-
   } catch (error) {
     console.error("Stock Report API error:", error.message);
-    return NextResponse.json({
-      status: "error",
-      error: "Failed to generate stock report.",
-    }, { status: 500 });
+    return NextResponse.json(
+      {
+        status: "error",
+        error: "Failed to generate stock report.",
+      },
+      { status: 500 }
+    );
   }
 }
-
-

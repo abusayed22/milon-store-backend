@@ -12,6 +12,9 @@ export async function GET(req, res) {
     const pageSize = parseInt(searchParams.get("pageSize"));
     
     const customers = await prisma.customers.findMany({
+      orderBy: {
+        name: 'asc' 
+      },
       skip: (page-1) * pageSize,
       take: pageSize
     })
@@ -38,16 +41,20 @@ export async function GET(req, res) {
   }
 }
 
-// patch all customers
+// patch all customers without pagination
 export async function PATCH(req, res) {
   try {
     // Use Prisma to retrieve all customers
     const customers = await prisma.customers.findMany({
+      select:{
+        id:true,
+        name:true,
+        phone:true,
+      },
       orderBy:{
         created_at:'desc'
       }
     });
-
     return NextResponse.json({ status: "ok", data: customers });
   } catch (error) {
     console.log("Error fetching customers:", error.message);

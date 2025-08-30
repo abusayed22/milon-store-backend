@@ -1,5 +1,7 @@
 import { paymentStatus, PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
+import { DateTime } from "luxon";
+
 
 const prisma = new PrismaClient();
 
@@ -49,7 +51,7 @@ export async function GET(req, res) {
   try {
     // Add CORS headers
     const headers = {
-      "Access-Control-Allow-Origin": "*", // Replace '*' with your frontend domain in production
+      "Access-Control-Allow-Origin": "*", 
       "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type, Authorization",
     };
@@ -58,6 +60,13 @@ export async function GET(req, res) {
     if (req.method === "OPTIONS") {
       return new Response(null, { status: 204, headers });
     }
+
+    const timeZone = "Asia/Dhaka";
+
+     const parseCompactDate = (dateString) => {
+      if (!dateString || dateString.length !== 6) return null;
+       return DateTime.fromFormat(dateString, "yyMMdd", { zone: timeZone });
+    };
 
     // get value from url
     const url = new URL(req.url);
@@ -79,49 +88,30 @@ export async function GET(req, res) {
       throw new Error("Page size must be a valid positive integer.");
     }
 
-    // ✅ Parse Compact Date (e.g., '241223' → '2024-12-23')
-    const parseCompactDate = (compactDate) => {
-      if (!compactDate || compactDate.length !== 6) return null;
-
-      const year = 2000 + parseInt(compactDate.slice(0, 2), 10); // '24' → 2024
-      const month = parseInt(compactDate.slice(2, 4), 10) - 1; // '12' → 11 (zero-based)
-      const day = parseInt(compactDate.slice(4, 6), 10); // '28' → 28
-
-      // Start of the day (00:00:00.000 UTC)
-      const localDate = new Date(year, month, day); // Local date
-      return new Date(
-        Date.UTC(
-          localDate.getFullYear(),
-          localDate.getMonth(),
-          localDate.getDate()
-        )
-      );
-    };
-
-    // Parse Dates
-    const start = parseCompactDate(startDate);
-    let end = parseCompactDate(endDate);
-
-    if (end) {
-      end = new Date(
-        Date.UTC(
-          end.getUTCFullYear(),
-          end.getUTCMonth(),
-          end.getUTCDate(),
-          23,
-          59,
-          59,
-          999
-        )
-      );
+        // Parse Dates
+    const startDt = parseCompactDate(startDate);
+    const endDt = parseCompactDate(endDate);
+  
+    let start, end;
+    if (startDt && startDt.isValid && endDt && endDt.isValid) {
+      // Get the start of the Dhaka day and convert to a JS Date for Prisma
+      start = startDt.startOf("day").toJSDate();
+      // Get the end of the Dhaka day and convert to a JS Date for Prisma
+      end = endDt.endOf("day").toJSDate();
+    } else {
+      // Default to the current day in Dhaka if params are missing/invalid
+      const nowInDhaka = DateTime.now().setZone(timeZone);
+      start = nowInDhaka.startOf("day").toJSDate();
+      end = nowInDhaka.endOf("day").toJSDate();
     }
+
 
     // Query sales data based on the date range
     const salesData = await prisma.sales.findMany({
       where: {
         created_at: {
-          gte: start?.toISOString(), // Start of day in UTC
-          lte: end?.toISOString(), // End of day in UTC
+          gte: start,
+          lte: end,
         },
       },
       select: {
@@ -140,6 +130,7 @@ export async function GET(req, res) {
         invoice: true,
       },
     });
+
 
     let totalSale = 0;
     let totalDue = 0;
