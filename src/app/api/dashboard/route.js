@@ -162,7 +162,10 @@ export async function GET(req) {
           _sum: { amount: true },
         }),
         prisma.collectPayment.aggregate({
-          where: dateFilter,
+          where: {
+            created_at:{gte,lte},
+            invoice:"null"
+          },
           _sum: { amount: true },
         }),
         prisma.sales.aggregate({
@@ -271,7 +274,7 @@ const totalPaidSpecialDiscount = paidSaleSpecialDiscounts.reduce(
       }
       totalSpecialDiscountForDate += discount.amount;
     });
-    console.log("test ", totalPaidSpecialDiscount);
+    // console.log("test ", totalPaidSpecialDiscount);
 
     const netSalesForDate =
       (totalSalesDate._sum.discountedPrice ?? 0) - totalSpecialDiscountForDate;
@@ -329,6 +332,7 @@ const totalPaidSpecialDiscount = paidSaleSpecialDiscounts.reduce(
       (categoryDiscounts.GROCERY ?? 0);
     // console.log("medicine Discount ",categoryDiscounts.MEDICINE)
     // console.log("medicine ",findCategory("MEDICINE").discountedPrice)
+
 
     return NextResponse.json({
       status: "ok",

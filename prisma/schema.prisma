@@ -157,6 +157,7 @@ model dueList {
 enum categoryType {
   FEED
   MEDICINE
+  GROCERY
 }
 
 enum paymentStatus {

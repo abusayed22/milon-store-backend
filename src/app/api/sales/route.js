@@ -92,7 +92,7 @@ export async function GET(req, res) {
         discountedPrice: true,
         paymentStatus: true,
         created_at: true,
-        customers: {
+        customers:{
           select: {
             name: true,
           },
@@ -266,18 +266,20 @@ export async function PATCH(req, res) {
   const pageInt = parseInt(page);
   const pageSizeInt = parseInt(pageSize);
 
-  try {
-    // Get the current UTC date
-    const now = new Date();
-    // Get the offset for Bangladesh Standard Time (UTC +6 hours)
-    const bangladeshOffset = 6 * 60; // 6 hours in minutes
-    // Set the start of the day (00:00:00 BST)
-    const startOfDayBST = new Date(now.getTime() + bangladeshOffset * 60000);
-    startOfDayBST.setHours(0, 0, 0, 0); // Set to 00:00:00 in Bangladesh Time
 
-    // Set the end of the day (23:59:59 BST)
-    const endOfDayBST = new Date(now.getTime() + bangladeshOffset * 60000);
-    endOfDayBST.setHours(23, 59, 59, 999); // Set to 23:59:59 in Bangladesh Time
+  try {
+    
+    let startOfDayBST;
+    let endOfDayBST;
+
+    if (status === "today") {
+      const timeZone = "Asia/Dhaka";
+      const nowInDhaka = DateTime.now().setZone(timeZone);
+      startOfDayBST = nowInDhaka.startOf("day").toJSDate();
+      endOfDayBST = nowInDhaka.endOf("day").toJSDate();
+    }
+
+
 
     if (status == "today") {
       const sales = await prisma.sales.findMany({
@@ -294,6 +296,8 @@ export async function PATCH(req, res) {
         // skip: (pageInt - 1) * pageSizeInt,
         // take: pageSizeInt,
       });
+
+
 
       let totalSales = 0;
       let totalDue = 0;
@@ -440,6 +444,9 @@ export async function POST(req, res) {
   try {
     const reqBody = await req.json();
 
+    // Get the current time in your specific timezone
+        const nowInDhaka = DateTime.now().setZone("Asia/Dhaka").toJSDate();
+
     // Validate input
     if (!Array.isArray(reqBody)) {
       return NextResponse.json({ error: "Expected an array of sales data" });
@@ -511,7 +518,7 @@ export async function POST(req, res) {
                 paymentStatus,
                 invoice: invoiceId,
                 note: note || "",
-                created_at:localDate()
+                created_at:nowInDhaka
               },
             });
 
@@ -533,7 +540,7 @@ export async function POST(req, res) {
             data: {
               amount: parseFloat(sepcialDiscount),
               invoice: invoiceId,
-              created_at: localDate()
+              created_at: nowInDhaka
             },
           });
         }
@@ -546,7 +553,7 @@ export async function POST(req, res) {
               amount: parseFloat(cash),
               invoice: invoiceId,
               note: note || "",
-              created_at: localDate()
+              created_at: nowInDhaka
             },
           });
 
@@ -558,7 +565,7 @@ export async function POST(req, res) {
               amount: parseFloat(due),
               invoice: invoiceId,
               note: note || "",
-              created_at: localDate()
+              created_at: nowInDhaka
             },
           });
         } else if (paymentStatus === "due") {
@@ -573,7 +580,7 @@ export async function POST(req, res) {
               ),
               invoice: invoiceId,
               note: note || "",
-              created_at: localDate()
+              created_at: nowInDhaka
             },
           });
         }
