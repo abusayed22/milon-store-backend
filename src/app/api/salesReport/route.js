@@ -411,9 +411,7 @@ const byPartialInvoices = async (invoiceModel, invoices) => {
 //   }
 // }
 
-
-
-// TODO: it's testing 
+// TODO: it's testing
 export async function GET(req, res) {
   try {
     const { searchParams } = new URL(req.url);
@@ -422,9 +420,16 @@ export async function GET(req, res) {
     const pageInt = parseInt(page) || 1;
     const pageSizeInt = parseInt(pageSize) || 10;
     const timeZone = "Asia/Dhaka";
-    const nowInDhaka = DateTime.now().setZone(timeZone);
-    const startOfDayUTC = nowInDhaka.startOf("day").toUTC().toJSDate();
-    const endOfDayUTC = nowInDhaka.endOf("day").toUTC().toJSDate();
+    const startDate = searchParams.get("startDate");
+    const endDate = searchParams.get("endDate");
+
+    const parseCompactDate = (dateString) => {
+      if (!dateString || dateString.length !== 6) return null;
+      return DateTime.fromFormat(dateString, "yyMMdd", { zone: timeZone });
+    };
+
+    const startOfDayUTC = parseCompactDate(startDate);
+    const endOfDayUTC = parseCompactDate(endDate);
 
     // Query sales and collections data for the day
     const [salesData, collectionsData] = await Promise.all([
