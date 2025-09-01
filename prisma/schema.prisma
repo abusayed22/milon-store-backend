@@ -180,3 +180,12 @@ model salesReturn {
 
   @@index([originalSaleId])
 }
+model user {
+  id             Int      @id @default(autoincrement())
+  
+  created_at     DateTime @default(now())
+
+
+}
+
+
