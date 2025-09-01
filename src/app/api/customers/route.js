@@ -1,5 +1,5 @@
 import { localDate } from "@/lib/dateTime";
-import { PrismaClient } from "@prisma/client";
+import { Prisma, PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 const prisma = new PrismaClient();
@@ -10,15 +10,15 @@ export async function GET(req, res) {
     const { searchParams } = new URL(req.url);
     const page = parseInt(searchParams.get("page"));
     const pageSize = parseInt(searchParams.get("pageSize"));
-    
+
     const customers = await prisma.customers.findMany({
       orderBy: {
-        name: 'asc' 
+        name: "asc",
       },
-      skip: (page-1) * pageSize,
-      take: pageSize
-    })
-    
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    });
+
     const totalCustomerCount = await prisma.customers.count();
     const totalPage = Math.ceil(totalCustomerCount / pageSize);
 
@@ -41,19 +41,19 @@ export async function GET(req, res) {
   }
 }
 
-// patch all customers without pagination
+
 export async function PATCH(req, res) {
   try {
     // Use Prisma to retrieve all customers
     const customers = await prisma.customers.findMany({
-      select:{
-        id:true,
-        name:true,
-        phone:true,
+      select: {
+        id: true,
+        name: true,
+        phone: true,
       },
-      orderBy:{
-        created_at:'desc'
-      }
+      orderBy: {
+        created_at: "desc",
+      },
     });
     return NextResponse.json({ status: "ok", data: customers });
   } catch (error) {
@@ -65,13 +65,12 @@ export async function PATCH(req, res) {
   }
 }
 
-
 // create customer
 export async function POST(req, res) {
   try {
     const reqData = await req.json(); // Parse the incoming request JSON data
 
-    // const customer_phone =  reqData.phone;
+    const name = (reqData.name || '').trim().toLowerCase();
 
     const existingCustomerPhone = await prisma.customers.count({
       where: {
@@ -90,11 +89,11 @@ export async function POST(req, res) {
       // Use Prisma to create a new customer with the provided data
       const newCustomer = await prisma.customers.create({
         data: {
-          name: reqData.name,
+          name,
           phone: reqData.phone,
           address: reqData.address,
           note: reqData.note || "empty",
-          created_at: localDate()
+          created_at: localDate(),
         },
       });
 

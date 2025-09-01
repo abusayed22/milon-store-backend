@@ -9,6 +9,7 @@ export async function GET(req) {
   const category = searchParams.get("category");
   const subCategory = searchParams.get("subCategory");
 
+
   // Construct the `where` condition dynamically, only including fields if they are provided
   const whereCondition = {
     stock:true,

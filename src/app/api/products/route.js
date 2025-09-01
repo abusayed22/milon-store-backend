@@ -122,6 +122,7 @@ export async function PATCH(req, res) {
     const subCategory= reqUrl.searchParams.get('subCategory');
     const productName= reqUrl.searchParams.get('name');
   
+    console.log(category)
 
     if(category === 'FEED'){
       const suggestions = await prisma.products.findMany({
@@ -167,6 +168,7 @@ export async function PATCH(req, res) {
             note: true,
         },
     });
+    console.log(suggestions)
     return NextResponse.json({ status: "ok", data: suggestions });
     }
 
