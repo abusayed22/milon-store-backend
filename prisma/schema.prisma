@@ -182,10 +182,14 @@ model salesReturn {
 }
 model user {
   id             Int      @id @default(autoincrement())
-  
+  role roleType
   created_at     DateTime @default(now())
 
 
 }
 
-
+enum roleType {
+  ADMIN
+  MANAGER
+  EMPLOYEE
+}

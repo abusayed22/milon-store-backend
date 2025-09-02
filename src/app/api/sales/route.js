@@ -574,10 +574,7 @@ export async function POST(req, res) {
               productCategory: sales[0]?.category,
               subCategory: sales[0]?.subCategory || null,
               customer_id: parseInt(customer_id),
-              amount: sales.reduce(
-                (total, sale) => total + parseFloat(sale.discountedPrice),
-                0
-              ),
+              amount:  parseFloat(due),
               invoice: invoiceId,
               note: note || "",
               created_at: nowInDhaka
