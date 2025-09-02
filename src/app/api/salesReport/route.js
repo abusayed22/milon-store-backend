@@ -419,17 +419,33 @@ export async function GET(req, res) {
     const pageSize = searchParams.get("pageSize");
     const pageInt = parseInt(page) || 1;
     const pageSizeInt = parseInt(pageSize) || 10;
-    const timeZone = "Asia/Dhaka";
-    const startDate = searchParams.get("startDate");
-    const endDate = searchParams.get("endDate");
+   const timeZone = "Asia/Dhaka";
+    const startDateParam = searchParams.get("startDate");
+    const endDateParam = searchParams.get("endDate");
 
     const parseCompactDate = (dateString) => {
       if (!dateString || dateString.length !== 6) return null;
       return DateTime.fromFormat(dateString, "yyMMdd", { zone: timeZone });
     };
 
-    const startOfDayUTC = parseCompactDate(startDate);
-    const endOfDayUTC = parseCompactDate(endDate);
+    const startDt = parseCompactDate(startDateParam);
+    const endDt = parseCompactDate(endDateParam);
+     let startOfDayUTC, endOfDayUTC;
+
+    if (startDt && startDt.isValid && endDt && endDt.isValid) {
+      // Get the start of the Dhaka day and convert to a JS Date for Prisma
+      startOfDayUTC = startDt.startOf("day").toJSDate();
+      // Get the end of the Dhaka day and convert to a JS Date for Prisma
+      endOfDayUTC = endDt.endOf("day").toJSDate();
+    } else {
+      // Default to the current day in Dhaka if params are missing/invalid
+      const nowInDhaka = DateTime.now().setZone(timeZone);
+      startOfDayUTC = nowInDhaka.startOf("day").toJSDate();
+      endOfDayUTC = nowInDhaka.endOf("day").toJSDate();
+    }
+
+    
+
 
     // Query sales and collections data for the day
     const [salesData, collectionsData] = await Promise.all([
