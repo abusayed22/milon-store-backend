@@ -36,7 +36,7 @@ import { NextResponse } from 'next/server';
 import { jwtVerify } from 'jose';
 
 // 1. Specify public routes that don't require authentication
-const publicRoutes = ['/api/auth/login', '/api/auth/register'];
+const publicRoutes = ['/api/auth/login', '/api/auth/register','/api/auth/forget-password','/api/auth/reset-password'];
 
 export async function middleware(req) {
   const path = req.nextUrl.pathname;
