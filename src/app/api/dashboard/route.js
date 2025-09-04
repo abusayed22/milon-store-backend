@@ -1,121 +1,10 @@
 import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { DateTime } from "luxon";
+import { withRoleAuthorization } from "@/lib/authMiddleware";
 
 const prisma = new PrismaClient();
 
-// export async function GET(req) {
-//   const { searchParams } = new URL(req.url);
-//   const dateParam = searchParams.get("date"); // Expects "YYYY-MM-DD"
-
-//   try {
-//     const timeZone = "Asia/Dhaka";
-//     let gte, lte;
-
-//     // Use the provided date or default to the current day
-//     if (dateParam) {
-//       const selectedDate = DateTime.fromISO(dateParam, { zone: timeZone });
-//       gte = selectedDate.startOf("day").toJSDate();
-//       lte = selectedDate.endOf("day").toJSDate();
-//     } else {
-//       const nowInDhaka = DateTime.now().setZone(timeZone);
-//       gte = nowInDhaka.startOf("day").toJSDate();
-//       lte = nowInDhaka.endOf("day").toJSDate();
-//     }
-
-//     // Filter for the selected day (e.g., "Today's Sales")
-//     const dateFilter = { created_at: { gte, lte } };
-//     // Filter for all time up to the selected day (e.g., "Total Available Cash")
-//     const upToDateFilter = { created_at: { lte } };
-
-//     // --- Fetch all data in parallel ---
-//     const [
-//       dateFilteredData,
-//       upToDateData,
-//     ] = await Promise.all([
-//       // 1. Get all data for the selected date range
-//       prisma.$transaction([
-//         prisma.specialDiscount.aggregate({ where: dateFilter, _sum: { amount: true } }),
-//         prisma.sales.groupBy({ by: ['category'], where: dateFilter, _sum: { discountedPrice: true, quantity: true } }),
-//         prisma.expneses.aggregate({ where: dateFilter, _sum: { amount: true } }),
-//         prisma.collectPayment.aggregate({ where: dateFilter, _sum: { amount: true } }),
-//         prisma.sales.aggregate({ where: dateFilter, _sum: { discountedPrice: true } }),
-//       ]),
-//       // 2. Get all-time totals up to the selected date
-//       prisma.$transaction([
-//         prisma.expneses.aggregate({ where: upToDateFilter, _sum: { amount: true } }),
-//         prisma.collectPayment.aggregate({ where: upToDateFilter, _sum: { amount: true } }),
-//         prisma.customerLoan.aggregate({ where: upToDateFilter, _sum: { amount: true } }),
-//         prisma.sales.findMany({ where: { ...upToDateFilter, paymentStatus: "paid" }, select: { invoice: true } }),
-//         prisma.sales.aggregate({ where: { ...upToDateFilter, paymentStatus: "paid" }, _sum: { discountedPrice: true } }),
-//       ]),
-//     ]);
-
-//     // --- Process Date-Filtered Data ---
-//     const [
-//       specialDiscountDate,
-//       salesByCategoryDate,
-//       expensesDate,
-//       collectedPaymentDate,
-//       totalSalesDate
-//     ] = dateFilteredData;
-
-//     const netSalesForDate = (totalSalesDate._sum.discountedPrice ?? 0) - (specialDiscountDate._sum.amount ?? 0);
-//     const expensesForDate = expensesDate._sum.amount ?? 0;
-//     const collectedForDate = collectedPaymentDate._sum.amount ?? 0;
-//     const availableCashForDate = (netSalesForDate + collectedForDate) - expensesForDate;
-
-//     // --- Process "Up-To-Date" Data ---
-//     const [totalExpenses, totalCollected, totalLoan, paidSaleInvoices, totalPaidSalesResult] = upToDateData;
-//     const paidInvoices = paidSaleInvoices.map(item => item.invoice);
-
-//     const paidSaleSpecialDiscount = await prisma.specialDiscount.aggregate({
-//       where: { ...upToDateFilter, invoice: { in: paidInvoices } },
-//       _sum: { amount: true }
-//     });
-
-//     const totalPaidSalesAmount = (totalPaidSalesResult._sum.discountedPrice ?? 0) - (paidSaleSpecialDiscount._sum.amount ?? 0);
-//     const totalExpensesAmount = totalExpenses._sum.amount ?? 0;
-//     const totalCollectedAmount = totalCollected._sum.amount ?? 0;
-//     // const totalCustomerLoanAmount = totalLoan._sum.amount ?? 0;
-//     const totalAvailableCash = (totalPaidSalesAmount + totalCollectedAmount) - totalExpensesAmount ;
-
-//     // --- Construct Final Response ---
-//     const findCategory = (cat) => salesByCategoryDate.find(c => c.category === cat)?._sum || {};
-
-//     return NextResponse.json({
-//       status: "ok",
-//       data: {
-//         selectedDate: {
-//           availableCash: totalAvailableCash,
-//           totalSales: netSalesForDate,
-//           expenses: expensesForDate,
-//           collectedPayments: collectedForDate,
-//           sales: {
-//             feed: { amount: findCategory("FEED").discountedPrice ?? 0, quantity: findCategory("FEED").quantity ?? 0 },
-//             medicine: { amount: findCategory("MEDICINE").discountedPrice ?? 0, quantity: findCategory("MEDICINE").quantity ?? 0 },
-//             grocery: { amount: findCategory("GROCERY").discountedPrice ?? 0, quantity: findCategory("GROCERY").quantity ?? 0 },
-//             totalSpecialDiscount: specialDiscountDate._sum.amount ?? 0,
-//           },
-//         },
-//         total: {
-//           availableCash: totalAvailableCash, //TODO:
-//           expenses: totalExpensesAmount,
-//           collectedPayments: totalCollectedAmount,
-//           // customerLoan: totalCustomerLoanAmount,
-//         },
-//         dateRange: { gte, lte }
-//       }
-//     });
-
-//   } catch (error) {
-//     console.error("Dashboard API error:", error);
-//     return NextResponse.json({
-//       status: "error",
-//       error: "An internal server error occurred."
-//     }, { status: 500 });
-//   }
-// }
 
 export async function GET(req) {
   const { searchParams } = new URL(req.url);
@@ -150,7 +39,7 @@ export async function GET(req) {
       prisma.$transaction([
         prisma.sales.findMany({
           where: dateFilter,
-          select: { invoice: true, category: true,paymentStatus:true },
+          select: { invoice: true, category: true, paymentStatus: true },
         }),
         prisma.sales.groupBy({
           by: ["category"],
@@ -163,8 +52,8 @@ export async function GET(req) {
         }),
         prisma.collectPayment.aggregate({
           where: {
-            created_at:{gte,lte},
-            invoice:"null"
+            created_at: { gte, lte },
+            invoice: "null",
           },
           _sum: { amount: true },
         }),
@@ -232,23 +121,23 @@ export async function GET(req) {
     });
 
     // --- 1. Filter the sales from that day to find only the ones marked as 'paid' ---
-const paidSalesForDate = salesWithInvoicesForDate.filter(
-  (sale) => sale.paymentStatus === 'paid'
-);
+    const paidSalesForDate = salesWithInvoicesForDate.filter(
+      (sale) => sale.paymentStatus === "paid"
+    );
 
-//  Get the invoice numbers from ONLY the paid sales ---
-const paidInvoiceNumbersForDate = paidSalesForDate.map(s => s.invoice);
+    //  Get the invoice numbers from ONLY the paid sales ---
+    const paidInvoiceNumbersForDate = paidSalesForDate.map((s) => s.invoice);
 
-//  Now, use this filtered list in your special discount query ---
-const paidSaleSpecialDiscounts = await prisma.specialDiscount.findMany({
-    where: { invoice: { in: paidInvoiceNumbersForDate } }
-});
+    //  Now, use this filtered list in your special discount query ---
+    const paidSaleSpecialDiscounts = await prisma.specialDiscount.findMany({
+      where: { invoice: { in: paidInvoiceNumbersForDate } },
+    });
 
-
-// You can now use 'paidSaleSpecialDiscounts' to calculate the total
-const totalPaidSpecialDiscount = paidSaleSpecialDiscounts.reduce(
-    (sum, discount) => sum + discount.amount, 0
-);
+    // You can now use 'paidSaleSpecialDiscounts' to calculate the total
+    const totalPaidSpecialDiscount = paidSaleSpecialDiscounts.reduce(
+      (sum, discount) => sum + discount.amount,
+      0
+    );
 
     //  Isolate invoices that were 'partial' date
     const partialInvoicesToday = salesWithInvoicesForDate
@@ -286,7 +175,8 @@ const totalPaidSpecialDiscount = paidSaleSpecialDiscounts.reduce(
 
     // --- NEW CALCULATION FOR TOTAL CASH SALE ---
     const paidSalesAmount = paidSalesDate._sum.discountedPrice ?? 0;
-    const totalCashSale = paidSalesAmount + partialPaymentsAmount - totalPaidSpecialDiscount;
+    const totalCashSale =
+      paidSalesAmount + partialPaymentsAmount - totalPaidSpecialDiscount;
 
     // --- Process "Up-To-Date" Data ---
     const [
@@ -333,7 +223,6 @@ const totalPaidSpecialDiscount = paidSaleSpecialDiscounts.reduce(
     // console.log("medicine Discount ",categoryDiscounts.MEDICINE)
     // console.log("medicine ",findCategory("MEDICINE").discountedPrice)
 
-
     return NextResponse.json({
       status: "ok",
       data: {
@@ -379,3 +268,12 @@ const totalPaidSpecialDiscount = paidSaleSpecialDiscounts.reduce(
     );
   }
 }
+
+
+
+// export const GET = withRoleAuthorization(["ADMIN","MANAGER","SALESPERSON"])(getDashboardDataHandler)
+
+
+
+
+
