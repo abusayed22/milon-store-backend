@@ -18,8 +18,8 @@ export async function GET(req) {
       return NextResponse.json({
         status: 400,
         error: "product_id is required",
-      });
-    }
+      });   
+    }         
   
     try {
       // Fetch due list records filtered by user_id (customer_id)
@@ -27,9 +27,6 @@ export async function GET(req) {
         where: {
           id: parseInt(proId),
         },
-        // include: {
-        //   customer: true, // Include related customer data if needed
-        // },
       });
   
       // Return the filtered single product data
@@ -50,8 +47,10 @@ export async function GET(req) {
 
 //   edit update 
 export async function POST(req, res) {
+
   try {
     const reqData = await req.json(); // Parse the incoming request JSON data
+
 
     const id =  reqData.id;
     const price =  reqData.unitPrice;
@@ -64,12 +63,13 @@ export async function POST(req, res) {
             unitPrice: parseFloat(price)
         }
     })   
+   
     return NextResponse.json({status: 'ok',data:updatedPrice}) 
   } catch (error) {
-    console.log("Error creating customer:", error.message);
+    console.log("Error product price update:", error.message);
     return NextResponse.json({
       status: 500,
-      error: "Failed to create customer!",
+      error: "Failed to prdouct price update!",
     });
   }
 }
