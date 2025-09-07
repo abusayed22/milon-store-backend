@@ -47,7 +47,7 @@ export async function GET(req) {
           _sum: { discountedPrice: true, quantity: true },
         }),
         prisma.expneses.aggregate({
-          where: dateFilter,
+          where: { created_at: { gte, lte },status: "APPROVED" },
           _sum: { amount: true },
         }),
         prisma.collectPayment.aggregate({
@@ -69,7 +69,7 @@ export async function GET(req) {
       // 2. Get all-time totals up to the selected date
       prisma.$transaction([
         prisma.expneses.aggregate({
-          where: upToDateFilter,
+        where: { created_at: { gte, lte },status: "APPROVED" },
           _sum: { amount: true },
         }),
         prisma.collectPayment.aggregate({

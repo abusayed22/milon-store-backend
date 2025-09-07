@@ -47,6 +47,7 @@ export async function GET(req, res) {
           gte,
           lte,
         },
+        status: 'APPROVED'
       },
       skip: (page - 1) * limit,
       take: limit,
@@ -63,6 +64,7 @@ export async function GET(req, res) {
           gte,
           lte,
         },
+        status:'APPROVED'
       },
     });
 

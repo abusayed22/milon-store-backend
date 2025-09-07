@@ -40,12 +40,13 @@ export async function GET(req, res) {
     }
 
     // fetch expense from the database with pagination
-    const expenseQuery = {
+    const loanQuery = {
       where: {
         created_at: {
           gte,
           lte,
         },
+        // status: 'APPROVED'
       },
       skip: (page - 1) * limit,
       take: limit,
@@ -61,7 +62,7 @@ export async function GET(req, res) {
         },
       },
     };
-    const loans = await prisma.customerLoan.findMany(expenseQuery);
+    const loans = await prisma.customerLoan.findMany(loanQuery);
 
     // Count total expenses for pagination
     const totalLoans = await prisma.customerLoan.count({

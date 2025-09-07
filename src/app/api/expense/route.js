@@ -32,6 +32,7 @@ export async function GET(req, res) {
         created_at: {
           gte: today,
         },
+        status:"APPROVED"
       },
       _sum: {
         amount: true,
@@ -70,10 +71,9 @@ export async function GET(req, res) {
   }
 }
 
-// create sales in Expense
+// create Expense
 export async function POST(req, res) {
   const { amount, note } = await req.json();
-  console.log(note);
 
   try {
     const expense = await prisma.expneses.create({
@@ -87,5 +87,33 @@ export async function POST(req, res) {
   } catch (error) {
     console.log(error.message);
     return NextResponse.json({ status: 500, error: "Failed to expense!" });
+  }
+}
+
+
+export async function PUT(req) {
+try {
+    const reqObj = await req.json();
+    const id = parseInt(reqObj.id);
+    const status = reqObj.status;
+
+    const updatedPayment = await prisma.expneses.update({
+      where: {id},
+      data:{status}
+    })
+
+    
+    return NextResponse.json({
+      status: 'ok',
+      message: 'Payment approved successfully.',
+      data: updatedPayment,
+    });
+
+  } catch (error) {
+    console.error('Failed to approve payment:', error);
+    return NextResponse.json(
+      { error: 'Failed to approve payment.' },
+      { status: 500 }
+    );
   }
 }

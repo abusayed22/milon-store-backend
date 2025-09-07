@@ -50,7 +50,7 @@ export async function POST(req, res) {
 
   try {
     const reqData = await req.json(); // Parse the incoming request JSON data
-
+    console.log(reqData)
 
     const id =  reqData.id;
     const price =  reqData.unitPrice;

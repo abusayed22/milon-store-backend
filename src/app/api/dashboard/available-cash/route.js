@@ -23,7 +23,7 @@ export async function GET(req) {
         },
         _sum: { amount: true },
       }),
-      prisma.expneses.aggregate({ _sum: { amount: true } }),
+      prisma.expneses.aggregate({ where:{status:'APPROVED'}, _sum: { amount: true } }),
       // prisma.customerLoan.aggregate({ _sum: { amount: true } }),
       prisma.collectPayment.aggregate({ _sum: { amount: true } }),
       // prisma.sales.aggregate({
