@@ -93,7 +93,7 @@ export async function POST(req, res) {
           phone: reqData.phone,
           address: reqData.address,
           note: reqData.note || "empty",
-          created_at: localDate(),
+          // created_at: localDate(),
         },
       });
 

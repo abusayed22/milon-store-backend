@@ -86,14 +86,13 @@ export async function POST (req,res) {
     const body = await req.json();
     const { customer_id, amount, note } = body;
 
-  
   // Create a new loan record
   const newLoan = await prisma.customerLoan.create({
     data: {
       customer_id: parseInt(customer_id),
       amount: parseFloat(amount),
       note: note || "",
-      created_at: localDate(),
+      // created_at: localDate(),
     },
     include: {
       customer: {

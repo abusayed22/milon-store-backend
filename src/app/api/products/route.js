@@ -15,7 +15,6 @@ export async function GET(req, res) {
         name:'asc'
       }
     });
-
     
     return NextResponse.json({ status: "ok", data: products });
   } catch (error) {
@@ -45,7 +44,7 @@ export async function POST(req, res) {
         unitPrice: parseFloat(unitPrice) || 0,
         note: note || "",
         stock: true,
-        created_at: localDate(),
+        // created_at: localDate(),
         history: {
           create: {
             name: name,
@@ -53,7 +52,7 @@ export async function POST(req, res) {
             subCategory: subCategory || null,
             totalpacket: totalpackte ? parseFloat(totalpackte) : null, 
             quantity:parseFloat(quantity),
-            created_at:localDate(),
+            // created_at:localDate(),
             // updated_at:new Date(),
             // unitPrice: unitPrice ? parseInt(unitPrice) : 0,
           },

@@ -73,7 +73,6 @@ export async function PATCH(req, res) {
   const page = searchParams.get("page");
   const pageSize = searchParams.get("pageSize");
   const pageInt = parseInt(page)
-  console.log(pageSize)
   const pageSizeInt = parseInt(pageSize)
   const userid = Number(userId);
   try {
@@ -119,7 +118,8 @@ export async function POST(req, res) {
         amount: parseFloat(amount),
         invoice: "null",
         note: note || "",
-        created_at: localDate(),
+        // created_at: localDate(),
+        // created_at: new Date.now(),
       },
       include: {
         customerName: {

@@ -80,7 +80,7 @@ export async function POST(req, res) {
       data: {
         amount: parseFloat(amount),
         note: note || "null",
-        created_at:localDate()
+        // created_at:localDate()
       },
     });
     return NextResponse.json({ status: "ok", data: expense });
