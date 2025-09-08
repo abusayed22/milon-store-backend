@@ -20,7 +20,7 @@ export async function GET(req, { params }) {
     // }
     // -----------------------------------------
 
-    const { id } = params; // Get the customer ID from the URL
+    const { id } = await params; // Get the customer ID from the URL
 const customerId = parseInt(id);
 
 

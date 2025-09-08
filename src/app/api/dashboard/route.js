@@ -100,7 +100,6 @@ export async function GET(req) {
       totalSalesDate,
       paidSalesDate,
     ] = dateFilteredData;
-    // console.log("Sale ",totalSalesDate)
     //  TODO:
 
     // Create a map to link invoices to their categories
