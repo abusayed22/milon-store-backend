@@ -73,7 +73,6 @@ export async function GET(req, res) {
         },
       },
     });
-
     const totalPage = Math.ceil(totalLoans / limit);
 
     return NextResponse.json({
