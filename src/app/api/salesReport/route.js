@@ -418,8 +418,8 @@ export async function GET(req, res) {
     const page = searchParams.get("page");
     const pageSize = searchParams.get("pageSize");
     const pageInt = parseInt(page) || 1;
-    const pageSizeInt = parseInt(pageSize) || 10;
-   const timeZone = "Asia/Dhaka";
+    const pageSizeInt = parseInt(pageSize);
+    const timeZone = "Asia/Dhaka";
     const startDateParam = searchParams.get("startDate");
     const endDateParam = searchParams.get("endDate");
 
@@ -480,6 +480,8 @@ export async function GET(req, res) {
         select: { customer_id: true, amount: true },
       }),
     ]);
+
+    console.log(salesData)
 
     // Create a map of collections for quick lookup
     const collectionsMap = new Map();

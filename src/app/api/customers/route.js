@@ -52,7 +52,7 @@ export async function PATCH(req, res) {
         phone: true,
       },
       orderBy: {
-        created_at: "desc",
+        name: "asc",
       },
     });
     return NextResponse.json({ status: "ok", data: customers });

@@ -10,6 +10,9 @@ export async function GET(req, res) {
     const products = await prisma.products.findMany({
       where:{
         stock:true
+      },
+      orderBy:{
+        name:'asc'
       }
     });
 
@@ -33,7 +36,7 @@ export async function POST(req, res) {
   try {
     const product = await prisma.products.create({
       data: {
-        name: name,
+        name: name.toLowerCase(),
         category: category || null,
         subCategory: subCategory || null,
         perPacket: perPackte ? parseFloat(perPackte) : null,// Corrected from `perPackte` to `perPacket`
@@ -122,7 +125,7 @@ export async function PATCH(req, res) {
     const subCategory= reqUrl.searchParams.get('subCategory');
     const productName= reqUrl.searchParams.get('name');
   
-    console.log(category)
+
 
     if(category === 'FEED'){
       const suggestions = await prisma.products.findMany({
@@ -133,6 +136,9 @@ export async function PATCH(req, res) {
                 contains: productName, // Case-insensitive partial match
                 // mode: 'insensitive',
             },
+        },
+        orderBy:{
+          name:'asc'
         },
         select: {
             id: true,
@@ -155,6 +161,9 @@ export async function PATCH(req, res) {
                 contains: productName, // Case-insensitive partial match
                 // mode: 'insensitive',
             },
+        },
+        orderBy:{
+          name:'asc'
         },
         select: {
             id: true,

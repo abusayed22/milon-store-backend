@@ -21,6 +21,9 @@ export async function GET(req) {
     // Fetch products based on category and optionally subCategory
     const products = await prisma.products.findMany({
       where: whereCondition,
+      orderBy:{
+        name:'asc'
+      }
     });
   
 

@@ -51,7 +51,7 @@ export const GET = async (req) => {
     );
 
     // Respond with the calculated data
-    return NextResponse.json({ status: 200, data: netDue });
+    return NextResponse.json({ status: 200, data: netDue||0 });
   } catch (error) {
     console.error("Error processing request:", error.message);
     return NextResponse.json({ status: 400, message: "Internal server error" });
