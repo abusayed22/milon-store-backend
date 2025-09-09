@@ -28,17 +28,17 @@ export async function POST(req) {
     // --- 3. Hash the password (CRITICAL for security) ---
     const hashedPassword = await bcrypt.hash(password, 10); // 10 is the salt rounds
 
+
     // --- 4. Create the new user in the database ---
     const newUser = await prisma.user.create({
       data: {
-        name:name.toLowerCase(),
-        email: email.toLowerCase(),
+        name:name? name.toLowerCase():null,
+        email: email?email.toLowerCase():null,
         password: hashedPassword,
-        role: 'SALESPERSON', 
+        role: 'MANAGER', 
         status:"PENDING"
       },
     });
-    console.log(newUser)
 
     // Don't send the password back in the response
     const { password: _, ...userWithoutPassword } = newUser;

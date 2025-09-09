@@ -35,7 +35,7 @@ export async function POST(req, res) {
   try {
     const product = await prisma.products.create({
       data: {
-        name: name.toLowerCase(),
+        name: name ? name.toLowerCase() : "null",
         category: category || null,
         subCategory: subCategory || null,
         perPacket: perPackte ? parseFloat(perPackte) : null,// Corrected from `perPackte` to `perPacket`
@@ -47,7 +47,7 @@ export async function POST(req, res) {
         // created_at: localDate(),
         history: {
           create: {
-            name: name,
+            name: name ? name.toLowerCase() : "null",
             category: category || null,
             subCategory: subCategory || null,
             totalpacket: totalpackte ? parseFloat(totalpackte) : null, 
@@ -59,7 +59,6 @@ export async function POST(req, res) {
         },
       },
     });
-    console.log(product)
     return NextResponse.json({ status: "ok", data: product });
   } catch (error) {
     console.log(error.message);

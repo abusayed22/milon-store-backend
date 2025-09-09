@@ -30,7 +30,7 @@ export async function POST(req) {
     }
 
 
-     if (user.status !== 'ACTIVE') {
+     if (user.status !== 'ACTIVE' ) {
       return NextResponse.json(
         { error: "Your account is pending approval by an administrator." },
         { status: 403 } // 403 Forbidden is the correct status code here

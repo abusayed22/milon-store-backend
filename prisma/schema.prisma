@@ -25,7 +25,7 @@ model products {
   totalpacket Float?
   quantity    Float
   note        String
-  created_at  DateTime
+  created_at  DateTime @default(now())
   updated_at  DateTime         @updatedAt
   unitPrice   Float
   stock       Boolean          @default(true)
@@ -55,7 +55,7 @@ model productTransferList {
   totalpacket Float?
   quantity    Int
   productId   Int
-  productName String
+  productName String    
   note        String
   created_at  DateTime      @default(now())
   updated_at  DateTime      @default(now()) @updatedAt
@@ -198,5 +198,4 @@ model User {
 enum roleType {
   ADMIN
   MANAGER
-  SALESPERSON
 }
