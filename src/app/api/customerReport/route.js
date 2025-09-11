@@ -1,6 +1,8 @@
 // import prisma from "@/lib/prisma";
 import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
+import { DateTime } from "luxon";
+
 
 const prisma = new PrismaClient();
 
@@ -432,3 +434,139 @@ export async function GET(req) {
     );
   }
 }
+
+
+
+
+
+// --------------------------------------- Patching date ways data -----------------------
+
+
+
+export async function PATCH(req) {
+  try {
+    const { searchParams } = new URL(req.url);
+
+    const userId = parseInt(searchParams.get("userId"));
+    const startDate = searchParams.get("startDate"); // Start date from query params
+    const endDate = searchParams.get("endDate"); // End date from query params
+
+    if (!userId) {
+      return NextResponse.json(
+        { status: "error", error: "User ID is required." },
+        { status: 400 }
+      );
+    }
+
+    // Validate the date format (YYYY-MM-DD) using Luxon
+    if (startDate && !isValidDate(startDate)) {
+      return NextResponse.json(
+        { status: "error", error: "Invalid start date format." },
+        { status: 400 }
+      );
+    }
+
+    if (endDate && !isValidDate(endDate)) {
+      return NextResponse.json(
+        { status: "error", error: "Invalid end date format." },
+        { status: 400 }
+      );
+    }
+
+    // --- Step 1: Fetch all transaction dates from all relevant tables ---
+    const [saleDates, paymentDates, loanDates] = await Promise.all([
+      prisma.sales.findMany({
+        where: { customer_id: userId },
+        select: { created_at: true },
+      }),
+      prisma.collectPayment.findMany({
+        where: { customer_id: userId },
+        select: { created_at: true },
+      }),
+      prisma.customerLoan.findMany({
+        where: { customer_id: userId },
+        select: { created_at: true },
+      }),
+    ]);
+
+    const allDates = [
+      ...saleDates.map((d) => d.created_at.toISOString().split("T")[0]),
+      ...paymentDates.map((d) => d.created_at.toISOString().split("T")[0]),
+      ...loanDates.map((d) => d.created_at.toISOString().split("T")[0]),
+    ];
+
+    // Get unique dates and sort them in descending order
+    const uniqueDates = [...new Set(allDates)].sort(
+      (a, b) => new Date(b) - new Date(a)
+    );
+
+    // --- Step 2: Fetch all transactions for the user ---
+    const allSales = await prisma.sales.findMany({
+      where: { customer_id: userId },
+      orderBy: { created_at: "desc" },
+    });
+
+    // --- Step 3: Group transactions by date ---
+    const transactionsByDate = {}; // sales
+    allSales.forEach((item) => {
+      const dateKey = item.created_at.toISOString().split("T")[0];
+      if (!transactionsByDate[dateKey]) transactionsByDate[dateKey] = [];
+      transactionsByDate[dateKey].push(item);
+    });
+
+    // --- Step 4: Filter dates within the range of startDate and endDate using Luxon ---
+    const filteredDates = uniqueDates.filter((dateKey) => {
+      const date = DateTime.fromISO(dateKey); // Use Luxon to create a DateTime object
+      const isAfterStartDate = startDate
+        ? date >= DateTime.fromISO(startDate)
+        : true; // Compare with startDate using Luxon DateTime
+      const isBeforeEndDate = endDate
+        ? date <= DateTime.fromISO(endDate)
+        : true; // Compare with endDate using Luxon DateTime
+      return isAfterStartDate && isBeforeEndDate;
+    });
+
+    // --- Step 5: Map over filtered dates and calculate daily summaries ---
+    let reportData = await Promise.all(
+      filteredDates.map(async (dateKey) => {
+        const salesArray = transactionsByDate[dateKey] || [];
+
+        const totalDiscountedPrice = DiscountPrice(salesArray);
+        const totalSpecialDiscount = await SpecialDiscount(salesArray);
+        const finalSale = totalDiscountedPrice - totalSpecialDiscount;
+
+        return {
+          date: dateKey,
+          sale: finalSale,
+          due: await DueAmount(salesArray),
+          cash: await CashAmount(salesArray),
+          accountStatus: await AccountStatus(dateKey, userId),
+          loan: await dateWaysDynamic(dateKey, userId, "customerLoan"),
+          collection: await dateWaysDynamic(dateKey, userId, "collectPayment", {
+            invoice: "null",
+          }),
+        };
+      })
+    );
+
+
+    // Return the filtered report data
+    return NextResponse.json({
+      status: "ok",
+      data: reportData,
+    });
+  } catch (error) {
+    console.error("Error fetching customer report:", error);
+    return NextResponse.json(
+      { status: "error", error: "Failed to retrieve report data" },
+      { status: 500 }
+    );
+  }
+}
+
+// Helper function to validate date format (YYYY-MM-DD) using Luxon
+function isValidDate(dateString) {
+  const date = DateTime.fromISO(dateString);
+  return date.isValid;
+}
+

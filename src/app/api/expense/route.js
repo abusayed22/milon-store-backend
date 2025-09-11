@@ -97,7 +97,6 @@ export async function POST(req, res) {
 
 export async function PUT(req) {
 try {
-  console.log('----------------------- Expense Status changing-------------')
     const reqObj = await req.json();
     const id = parseInt(reqObj.id);
     const status = reqObj.status;
