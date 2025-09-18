@@ -22,6 +22,9 @@ export const GET = async (req) => {
                 totalpacket:true,
                 unitPrice:true,
                 quantity:true,
+            },
+            orderBy:{
+                name:'asc'
             }
         })
         // console.log(productsByCategory)

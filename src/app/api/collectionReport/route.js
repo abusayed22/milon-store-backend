@@ -76,7 +76,20 @@ export async function GET(req, res) {
                 invoice: "null"
             },
         });
-        console.log(totalCollections)
+        
+        const totalCollectionAggrigation = await prisma.collectPayment.aggregate({
+            _sum:{
+                amount:true
+            },
+            where: {
+                created_at: {
+                    gte,
+                    lte
+                },
+                invoice:"null"
+            },
+        });
+        const totalAmount = totalCollectionAggrigation._sum.amount
 
         const totalPage = Math.ceil(totalCollections / limit);
 
@@ -88,6 +101,7 @@ export async function GET(req, res) {
             data: collections,
             totalPage,
             totalCollections,
+            totalAmount
         });
     } catch (error) {
         console.error("API error:", error.message);

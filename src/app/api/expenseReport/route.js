@@ -68,6 +68,21 @@ export async function GET(req, res) {
       },
     });
 
+     const totalAmountAggregate = await prisma.expneses.aggregate({
+      _sum: {
+        amount: true,
+      },
+      where: {
+        created_at: {
+          gte,
+          lte,
+        },
+        status:'APPROVED'
+      },
+    });
+
+    const totalAmount = totalAmountAggregate._sum.amount || 0;
+
     const totalPage = Math.ceil(totalExpenses / limit);
 
     return NextResponse.json({
@@ -75,12 +90,13 @@ export async function GET(req, res) {
       data: expense,
       totalPage,
       totalExpenses,
+      totalAmount
     });
   } catch (error) {
     console.error("API error:", error.message);
     return NextResponse.json({
       status: 501,
-      error: "Failed to get Sales-Report!",
+      error: "Failed to get expenses-Report!",
     });
   }
 }
