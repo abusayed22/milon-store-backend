@@ -39,7 +39,7 @@ const byPartialInvoices = async (invoiceModel, invoices) => {
       },
     });
 
-    return parseFloat(partialAmount._sum.amount || 0); 
+    return parseFloat(partialAmount._sum.amount || 0);
   } catch (error) {
     console.error("Error fetching partial invoices:", error);
     throw new Error("Failed to fetch partial invoices");
@@ -56,6 +56,7 @@ export async function GET(req, res) {
     const pageSize = searchParams.get("pageSize");
     const pageInt = parseInt(page);
     const pageSizeInt = parseInt(pageSize);
+    const dateParam = searchParams.get("date");
 
     if (pageInt <= 0 || pageSizeInt <= 0) {
       return NextResponse.json({
@@ -64,18 +65,29 @@ export async function GET(req, res) {
       });
     }
 
+    if (isNaN(page) || isNaN(pageSize) || page <= 0 || pageSize <= 0) {
+      return NextResponse.json({
+        status: 400,
+        error: "Invalid pagination parameters",
+      });
+    }
 
     // Define the timezone
     const timeZone = "Asia/Dhaka";
+    let targetDate;
 
-    // Get the current UTC time
-    const nowUTC = DateTime.utc();
+    // Use the provided date parameter, or default to the current day in Dhaka if it's missing/invalid
+    if (dateParam) {
+      const parsedDate = DateTime.fromISO(dateParam, { zone: timeZone });
+      targetDate = parsedDate.isValid
+        ? parsedDate
+        : DateTime.now().setZone(timeZone);
+    } else {
+      targetDate = DateTime.now().setZone(timeZone);
+    }
 
-    // Calculate the start and end of the day in UTC, adjusted for Asia/Dhaka
-    const startOfDayUTC = nowUTC.setZone(timeZone).startOf("day").toUTC();
-    const endOfDayUTC = nowUTC.setZone(timeZone).endOf("day").toUTC();
-
- 
+    const gte = targetDate.startOf("day").toJSDate(); // Start of the specified day
+    const lte = targetDate.endOf("day").toJSDate();
 
     // ----------today total calculation ----------
 
@@ -83,8 +95,8 @@ export async function GET(req, res) {
     const salesData = await prisma.sales.findMany({
       where: {
         created_at: {
-          gte: startOfDayUTC, // Start of day in UTC
-          lte: endOfDayUTC, // End of day in UTC
+          gte, // Start of day in UTC
+          lte, // End of day in UTC
         },
       },
       select: {
@@ -92,7 +104,7 @@ export async function GET(req, res) {
         discountedPrice: true,
         paymentStatus: true,
         created_at: true,
-        customers:{
+        customers: {
           select: {
             name: true,
           },
@@ -108,14 +120,16 @@ export async function GET(req, res) {
       },
       where: {
         created_at: {
-          gte: startOfDayUTC, // Start of day in UTC
-          lte: endOfDayUTC, // End of day in UTC
+          gte, // Start of day in UTC
+          lte, // End of day in UTC
         },
       },
     });
 
     // Calculate today totals for sales, due, and cash
-    let todayTotalSalesPrice = parseFloat(totalSalesCalculation._sum.discountedPrice || 0);
+    let todayTotalSalesPrice = parseFloat(
+      totalSalesCalculation._sum.discountedPrice || 0
+    );
     let todayTotalDueAmount = 0;
     let todayTotalCashAmount = 0;
 
@@ -138,8 +152,8 @@ export async function GET(req, res) {
     const totalSalesCount = await prisma.sales.count({
       where: {
         created_at: {
-          gte: startOfDayUTC, // Start of day in UTC
-          lte: endOfDayUTC, // End of day in UTC
+          gte, // Start of day in UTC
+          lte, // End of day in UTC
         },
       },
     });
@@ -237,7 +251,7 @@ export async function GET(req, res) {
         todayTotalSalesPrice,
         todayTotalDueAmount,
         todayTotalCashAmount,
-        today: endOfDayUTC,
+        today: lte,
       },
       pagination: {
         currentPage: pageInt,
@@ -266,9 +280,7 @@ export async function PATCH(req, res) {
   const pageInt = parseInt(page);
   const pageSizeInt = parseInt(pageSize);
 
-
   try {
-    
     let startOfDayBST;
     let endOfDayBST;
 
@@ -278,8 +290,6 @@ export async function PATCH(req, res) {
       startOfDayBST = nowInDhaka.startOf("day").toJSDate();
       endOfDayBST = nowInDhaka.endOf("day").toJSDate();
     }
-
-
 
     if (status == "today") {
       const sales = await prisma.sales.findMany({
@@ -296,8 +306,6 @@ export async function PATCH(req, res) {
         // skip: (pageInt - 1) * pageSizeInt,
         // take: pageSizeInt,
       });
-
-
 
       let totalSales = 0;
       let totalDue = 0;
@@ -321,7 +329,7 @@ export async function PATCH(req, res) {
       const partialInovices = salesData
         .filter((obj) => obj.paymentStatus === "partial")
         .map((obj) => obj.invoice);
-      // This customer invoice for more calculation 
+      // This customer invoice for more calculation
       const customerInvoices = sales.map((obj) => obj.invoice);
       // This customer total special Discount
       const totalSpecialDiscount = await getTotalSpecialDiscount(
@@ -438,14 +446,13 @@ export async function OPTIONS(req, res) {
   }
 }
 
-
-// sales create 
+// sales create
 export async function POST(req, res) {
   try {
     const reqBody = await req.json();
 
     // Get the current time in your specific timezone
-        const nowInDhaka = DateTime.now().setZone("Asia/Dhaka").toJSDate();
+    const nowInDhaka = DateTime.now().setZone("Asia/Dhaka").toJSDate();
 
     // Validate input
     if (!Array.isArray(reqBody)) {
@@ -459,7 +466,6 @@ export async function POST(req, res) {
       acc[invoiceId].push(saleData);
       return acc;
     }, {});
-    
 
     const results = await Promise.all(
       Object.entries(salesGroupedByInvoice).map(async ([invoiceId, sales]) => {
@@ -518,7 +524,7 @@ export async function POST(req, res) {
                 paymentStatus,
                 invoice: invoiceId,
                 note: note || "",
-                created_at:nowInDhaka
+                created_at: nowInDhaka,
               },
             });
 
@@ -540,7 +546,7 @@ export async function POST(req, res) {
             data: {
               amount: parseFloat(sepcialDiscount),
               invoice: invoiceId,
-              created_at: nowInDhaka
+              created_at: nowInDhaka,
             },
           });
         }
@@ -553,7 +559,7 @@ export async function POST(req, res) {
               amount: parseFloat(cash),
               invoice: invoiceId,
               note: note || "",
-              created_at: nowInDhaka
+              created_at: nowInDhaka,
             },
           });
 
@@ -565,7 +571,7 @@ export async function POST(req, res) {
               amount: parseFloat(due),
               invoice: invoiceId,
               note: note || "",
-              created_at: nowInDhaka
+              created_at: nowInDhaka,
             },
           });
         } else if (paymentStatus === "due") {
@@ -574,10 +580,10 @@ export async function POST(req, res) {
               productCategory: sales[0]?.category,
               subCategory: sales[0]?.subCategory || null,
               customer_id: parseInt(customer_id),
-              amount:  parseFloat(due),
+              amount: parseFloat(due),
               invoice: invoiceId,
               note: note || "",
-              created_at: nowInDhaka
+              created_at: nowInDhaka,
             },
           });
         }

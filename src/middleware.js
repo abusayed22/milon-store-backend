@@ -64,7 +64,7 @@ export async function middleware(req) {
 
   // 5. For protected routes, verify the JWT
   const authHeader = req.headers.get('authorization');
-  console.log(authHeader)
+  // console.log(authHeader)
   if (!authHeader?.startsWith('Bearer ')) {
     return new NextResponse(
       JSON.stringify({ error: 'Unauthorized: No token provided' }),
